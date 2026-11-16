@@ -702,12 +702,14 @@
       hasPaidSub = localStorage.getItem('cs_pro_stars_active') === 'true';
 
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      const uidFromUrl = Number(urlParams.get('uid') || 0);
+
       if (tgUser && tgUser.id) {
         currentUser.id = Number(tgUser.id);
         currentUser.name = tgUser.first_name || 'Пользователь';
-      } else {
-        currentUser.id = 0;
-        currentUser.name = 'Гость';
+      } else if (uidFromUrl) {
+        currentUser.id = uidFromUrl;
+        currentUser.name = 'Пользователь';
       }
 
       isOwner = (currentUser.id !== 0) && ADMIN_TELEGRAM_IDS.includes(currentUser.id);
@@ -727,47 +729,49 @@
       renderVipUsersList();
     }
 
-    function hasProAccess() {
-      if (isOwner && !adminForceFreeView) return true;
-      if (currentUser.id && vipList.includes(currentUser.id)) return true;
-      return hasPaidSub;
-    }
-
-    function updateAccessUI() {
-      const pro = hasProAccess();
-      const paywall = document.getElementById('paywall-card');
-      const headerBtn = document.getElementById('header-sub-btn');
-      const headerText = document.getElementById('header-sub-text');
-      const expBadge = document.getElementById('express-access-badge');
-
-      if (pro) {
-        paywall.classList.add('hidden');
-        headerBtn.className = 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition';
-        headerText.textContent = (isOwner && !adminForceFreeView) ? 'OWNER • PRO' : 'PRO Активен';
-        expBadge.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
-        expBadge.textContent = (isOwner && !adminForceFreeView) ? 'VIP Бесплатно' : 'Подписка 499 ⭐ активна';
-      } else {
-        paywall.classList.remove('hidden');
-        headerBtn.className = 'bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm active:scale-95 transition';
-        headerText.textContent = 'PRO • 499 ⭐';
-        expBadge.className = 'text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
-        expBadge.textContent = 'Требуется PRO (499 ⭐)';
+    // Повторная проверка ID до 3 секунд (на случай задержки инициализации в Telegram Desktop)
+    let idCheckAttempts = 0;
+    const idCheckTimer = setInterval(() => {
+      initUserAndPermissions();
+      idCheckAttempts++;
+      if (currentUser.id !== 0 || idCheckAttempts >= 6) {
+        clearInterval(idCheckTimer);
       }
-    }
+    }, 500);
 
     // =========================================================================
-    // ОПЛАТА 499 STARS В ОДИН КЛИК ЧЕРЕЗ БОТА @SportDigitBot
+    // ОПЛАТА 499 STARS ПОВЕРХ MINI APP БЕЗ ВЫЛЕТА В /start
     // =========================================================================
     function instantPayStars() {
       const tg = window.Telegram?.WebApp;
+      const urlParams = new URLSearchParams(window.location.search);
+      const invoiceUrl = urlParams.get('inv');
 
-      if (tg && typeof tg.openTelegramLink === 'function') {
-        tg.openTelegramLink(BOT_PAY_LINK);
-        setTimeout(() => {
-          if (tg.close) tg.close();
-        }, 300);
+      if (invoiceUrl && invoiceUrl.startsWith('https://t.me/')) {
+        if (tg && typeof tg.openInvoice === 'function') {
+          tg.openInvoice(invoiceUrl, function(status) {
+            if (status === 'paid') {
+              hasPaidSub = true;
+              localStorage.setItem('cs_pro_stars_active', 'true');
+              updateAccessUI();
+              if (tg.showAlert) {
+                tg.showAlert('✅ Оплата 499 ⭐ прошла успешно! PRO-доступ активирован.');
+              }
+            }
+          });
+          return;
+        }
+        if (tg && typeof tg.openTelegramLink === 'function') {
+          tg.openTelegramLink(invoiceUrl);
+          return;
+        }
+      }
+
+      // Если приложение открыто не через кнопку /start (например, через меню)
+      if (tg && tg.showAlert) {
+        tg.showAlert('Для оплаты подписки отправьте команду /pro в чат с ботом @SportDigitBot — счёт на 499 ⭐ придёт мгновенно!');
       } else {
-        window.open(BOT_PAY_LINK, '_blank');
+        window.open('https://t.me/SportDigitBot', '_blank');
       }
     }
 
