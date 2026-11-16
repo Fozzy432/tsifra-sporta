@@ -819,12 +819,21 @@
     // =========================================================================
     // МГНОВЕННАЯ ОПЛАТА 499 TELEGRAM STARS В ОДИН КЛИК
     // =========================================================================
-    async function preloadStarsInvoice() {
-      if (BOT_TOKEN_FOR_CHECK.includes('9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4')) return;
-      try {
-        const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN_FOR_CHECK}/createInvoiceLink`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+    function preloadStarsInvoice() {}
+
+function instantPayStars() {
+  const tg = window.Telegram?.WebApp;
+  const payLink = 'https://t.me/SportDigitBot?start=pay';
+
+  if (tg && typeof tg.openTelegramLink === 'function') {
+    tg.openTelegramLink(payLink);
+    setTimeout(() => {
+      if (tg.close) tg.close();
+    }, 300);
+  } else {
+    window.open(payLink, '_blank');
+  }
+}
           body: JSON.stringify({
             title: 'Цифра Спорта PRO (30 дней)',
             description: 'ИИ-проверка экспрессов, поиск слабых событий и рекомендации по замене.',
