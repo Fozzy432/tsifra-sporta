@@ -149,7 +149,7 @@
         </div>
       </div>
 
-      <button id="main-pay-btn" onclick="instantPayStars()" class="w-full bg-white text-[#0F172A] hover:bg-blue-50 font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition flex items-center justify-center gap-1.5">
+      <button id="main-pay-btn" onclick="" class="w-full bg-white text-[#0F172A] hover:bg-blue-50 font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition flex items-center justify-center gap-1.5">
         <span>⭐ Оплатить подписку за 499 ⭐</span>
       </button>
     </div>
@@ -843,9 +843,23 @@
       }
     }
 
-    async function instantPayStars() {
+    function preloadStarsInvoice() {
+      // Генерация счёта перенесена на сторону Python-бота (@SportDigitBot?start=pay)
+    }
+
+    function instantPayStars() {
       const tg = window.Telegram?.WebApp;
-      const btn = document.getElementById('main-pay-btn');
+      const payLink = 'https://t.me/SportDigitBot?start=pay';
+
+      if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(payLink);
+        setTimeout(() => {
+          if (tg.close) tg.close();
+        }, 300);
+      } else {
+        window.open(payLink, '_blank');
+      }
+    }
 
       if (BOT_TOKEN_FOR_CHECK.includes('9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4')) {
         alert('Впишите токен бота в переменную BOT_TOKEN_FOR_CHECK в index.html!');
