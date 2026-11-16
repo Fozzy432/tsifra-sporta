@@ -878,16 +878,23 @@
         currentUser.id = Number(tgUser.id);
         currentUser.name = tgUser.first_name || 'Пользователь';
       } else {
-        currentUser.id = 6851997342;
-        currentUser.name = 'Владелец';
+        // По умолчанию гостевой режим без прав администратора
+        currentUser.id = 0;
+        currentUser.name = 'Гость';
       }
 
       isOwner = ADMIN_TELEGRAM_IDS.includes(currentUser.id);
-      document.getElementById('admin-my-id').textContent = currentUser.id;
+      document.getElementById('admin-my-id').textContent = currentUser.id || 'Не определён';
 
       if (isOwner) {
         document.getElementById('role-badge').classList.remove('hidden');
         document.getElementById('nav-admin').classList.remove('hidden');
+      } else {
+        // Принудительно скрываем админку и сбрасываем режим просмотра для всех остальных
+        document.getElementById('role-badge').classList.add('hidden');
+        document.getElementById('nav-admin').classList.add('hidden');
+        document.getElementById('view-admin').classList.add('hidden');
+        adminForceFreeView = false;
       }
 
       updateAccessUI();
