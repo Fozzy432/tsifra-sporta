@@ -422,15 +422,31 @@ async def callback_check_subscription(callback: CallbackQuery):
 
 
 async def send_stars_invoice(chat_id: int):
+    """Выставляет официальный счёт на 499 Telegram Stars (валюта XTR)."""
     await bot.send_invoice(
         chat_id=chat_id,
         title="Цифра Спорта PRO (30 дней)",
         description="Автоматическая проверка экспрессов с помощью ИИ, поиск слабых событий и рекомендации по замене.",
         payload="pro_subscription_30d",
-        provider_token="",
-        currency="XTR",
+        provider_token="",  # Для Telegram Stars всегда пустая строка
+        currency="XTR",     # Код валюты Telegram Stars
         prices=[LabeledPrice(label="Подписка PRO на 1 месяц", amount=STARS_PRICE)],
     )
+
+
+@dp.message(Command("pro"))
+@dp.message(Command("pay"))
+@dp.message(F.text.contains("499 Stars"))
+async def cmd_buy_pro(message: types.Message):
+    if not await is_user_subscribed(message.from_user.id):
+        await message.answer(
+            f"🔒 Сначала подпишитесь на наш официальный канал {CHANNEL_USERNAME}:",
+            reply_markup=get_subscribe_keyboard(),
+        )
+        return
+
+    # Выставляем счёт всем (включая вас, если хотите протестировать оплату)
+    await send_stars_invoice(message.chat.id)
 
 
 @dp.message(Command("pro"))
