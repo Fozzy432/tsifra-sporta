@@ -422,31 +422,36 @@ async def callback_check_subscription(callback: CallbackQuery):
 
 
 async def send_stars_invoice(chat_id: int):
-    """Выставляет официальный счёт на 499 Telegram Stars (валюта XTR)."""
+    """Отправляет официальный счёт на 499 Telegram Stars в чат."""
     await bot.send_invoice(
         chat_id=chat_id,
         title="Цифра Спорта PRO (30 дней)",
         description="Автоматическая проверка экспрессов с помощью ИИ, поиск слабых событий и рекомендации по замене.",
         payload="pro_subscription_30d",
-        provider_token="",  # Для Telegram Stars всегда пустая строка
-        currency="XTR",     # Код валюты Telegram Stars
+        provider_token="",
+        currency="XTR",
         prices=[LabeledPrice(label="Подписка PRO на 1 месяц", amount=STARS_PRICE)],
     )
 
 
-@dp.message(Command("pro"))
-@dp.message(Command("pay"))
-@dp.message(F.text.contains("499 Stars"))
-async def cmd_buy_pro(message: types.Message):
+@dp.message(CommandStart())
+async def cmd_start(message: types.Message):
     if not await is_user_subscribed(message.from_user.id):
         await message.answer(
-            f"🔒 Сначала подпишитесь на наш официальный канал {CHANNEL_USERNAME}:",
+            "🔒 **Доступ к «Цифре Спорта» открыт только подписчикам нашего канала!**\n\n"
+            f"Подпишитесь на {CHANNEL_USERNAME}, а затем нажмите кнопку **«✅ Я подписался (Проверить)»** ниже.",
+            parse_mode="Markdown",
             reply_markup=get_subscribe_keyboard(),
         )
         return
 
-    # Выставляем счёт всем (включая вас, если хотите протестировать оплату)
-    await send_stars_invoice(message.chat.id)
+    # Если пользователь перешёл по кнопке «Оплатить 499 ⭐» из Mini App — сразу выставляем счёт!
+    args = message.text.split(maxsplit=1)
+    if len(args) > 1 and args[1] == "pay":
+        await send_stars_invoice(message.chat.id)
+        return
+
+    await send_welcome_menu(message.chat.id, message.from_user.id)
 
 
 @dp.message(Command("pro"))
