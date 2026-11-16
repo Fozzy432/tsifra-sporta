@@ -23,7 +23,31 @@
 </head>
 <body class="pb-24">
 
-  <!-- Шапка приложения (Темно-синяя) -->
+  <!-- ==================== ЭКРАН ОБЯЗАТЕЛЬНОЙ ПОДПИСКИ НА КАНАЛ ==================== -->
+  <div id="sub-gate-modal" class="hidden fixed inset-0 bg-[#0F172A] text-white z-50 flex flex-col items-center justify-center p-6 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center font-extrabold text-2xl mb-4 shadow-lg">
+      ЦС
+    </div>
+    <h2 class="text-xl font-extrabold mb-2">Подпишитесь на канал</h2>
+    <p class="text-xs text-slate-300 leading-relaxed max-w-xs mb-6">
+      Доступ к бесплатной аналитике матчей, Live-счёту и расчёту шансов открыт только подписчикам нашего официального Telegram-канала <strong>@DigitSportLive</strong>.
+    </p>
+    <div class="w-full max-w-xs space-y-3">
+      <a id="gate-channel-link" href="https://t.me/DigitSportLive" target="_blank"
+         class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-md transition">
+        📢 Подписаться на @DigitSportLive
+      </a>
+      <button onclick="verifyChannelSubscription()" id="gate-check-btn"
+              class="w-full bg-white text-[#0F172A] font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition">
+        ✅ Я подписался (Проверить)
+      </button>
+    </div>
+    <p id="gate-error-msg" class="hidden text-xs text-rose-400 font-semibold mt-4">
+      ❌ Подписка не найдена. Подпишитесь на @DigitSportLive и нажмите «Проверить» ещё раз.
+    </p>
+  </div>
+
+  <!-- Шапка приложения -->
   <header class="bg-[#0F172A] text-white pt-4 pb-5 px-4 rounded-b-3xl shadow-md sticky top-0 z-20">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2.5">
@@ -172,8 +196,8 @@
         </span>
       </div>
       <h2 class="text-lg font-extrabold">Управление «Цифрой Спорта»</h2>
-      <p class="text-xs text-slate-400 mt-1">Ваш Telegram ID: <strong id="admin-my-id" class="text-white select-all">6851997342</strong></p>
-      <p class="text-xs text-slate-400 mt-0.5">Тариф в боте: <strong class="text-amber-400">499 ⭐ / месяц</strong></p>
+      <p class="text-xs text-slate-400 mt-1">Ваш Telegram ID: <strong id="admin-my-id" class="text-white select-all">—</strong></p>
+      <p class="text-xs text-slate-400 mt-0.5">Канал: <strong class="text-blue-300">@DigitSportLive</strong> • Тариф: <strong class="text-amber-400">499 ⭐</strong></p>
     </div>
 
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
@@ -270,20 +294,22 @@
 
   <script>
     // =========================================================================
-    // НАСТРОЙКИ ВЛАДЕЛЬЦА И ТАРИФА
+    // НАСТРОЙКИ ВЛАДЕЛЬЦА, ТАРИФА И ОБЯЗАТЕЛЬНОЙ ПОДПИСКИ НА КАНАЛ
     // =========================================================================
     const ADMIN_TELEGRAM_IDS = [6851997342];
     const SUBSCRIPTION_STARS_PRICE = 499;
 
-    // ПОЛНЫЙ СПИСОК МАТЧЕЙ НА СЕГОДНЯ (16 НОЯБРЯ 2026: ВСЕ 10 МАТЧЕЙ ЛИГИ НАЦИЙ + ВСЕ 3 МАТЧА КХЛ)
+    const BOT_TOKEN_FOR_CHECK = 'ВСТАВЬТЕ_ТОКЕН_ВАШЕГО_БОТА';
+    const REQUIRED_CHANNEL = '@DigitSportLive';
+    const REQUIRED_CHANNEL_URL = 'https://t.me/DigitSportLive';
+
     const fallbackMatches = [
-      // --- КХЛ (СЕГОДНЯ, 16 НОЯБРЯ 2026) ---
       {
         id: 'khl-salavat-admiral',
         sport: 'hockey',
         featured: true,
         isValue: true,
-        status: 'upcoming', // 'upcoming' | 'live' | 'finished'
+        status: 'upcoming',
         startTs: '2026-11-16T14:00:00Z',
         liveClock: '',
         score: { home: 0, away: 0 },
@@ -298,11 +324,7 @@
         prob: { p1: 42, x: 24, p2: 34 },
         favorite: { team: 'Салават Юлаев', chance: 42, side: 'П1' },
         valueTag: 'Value +2.4%',
-        bestOdds: {
-          p1: { val: '2.25', bk: 'Winline' },
-          x:  { val: '3.95', bk: 'Фонбет' },
-          p2: { val: '2.80', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '2.25', bk: 'Winline' }, x: { val: '3.95', bk: 'Фонбет' }, p2: { val: '2.80', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline', p1: '2.25', x: '3.90', p2: '2.75' },
           { name: 'Фонбет',  p1: '2.22', x: '3.95', p2: '2.80' },
@@ -311,8 +333,8 @@
         explanationSummary: '«Салават Юлаев» имеет перевес дома (42% против 34%), так как «Адмирал» в 8 из 10 последних встреч в Уфе не забрасывал больше 2 шайб.',
         reasons: [
           { title: 'Стена обороны Уфы в очных матчах', detail: 'В 8 из 10 последних домашних игр против «Адмирала» уфимцы пропускали не более 2 шайб в основное время.' },
-          { title: 'Фактор домашнего льда «Уфа-Арены»', detail: 'При поддержке трибун «Салават Юлаев» контролирует темп и перебрасывает соперников из нижней части таблицы в среднем на 9 бросков.' },
-          { title: 'Высокая вероятность плотной игры', detail: 'Шанс ничьей в основное время (24%) выше среднего по лиге, поэтому чистая победа оценивается в 42%.' }
+          { title: 'Фактор домашнего льда «Уфа-Арены»', detail: 'При поддержке трибун «Салават Юлаев» контролирует темп и перебрасывает соперников из нижней части таблицы.' },
+          { title: 'Высокая вероятность плотной игры', detail: 'Шанс ничьей в основное время (24%) выше среднего по лиге.' }
         ]
       },
       {
@@ -335,11 +357,7 @@
         prob: { p1: 63, x: 20, p2: 17 },
         favorite: { team: 'ЦСКА', chance: 63, side: 'П1' },
         valueTag: 'Уверенность: Высокая',
-        bestOdds: {
-          p1: { val: '1.50', bk: 'Winline' },
-          x:  { val: '4.90', bk: 'Winline' },
-          p2: { val: '5.80', bk: 'Winline' }
-        },
+        bestOdds: { p1: { val: '1.50', bk: 'Winline' }, x: { val: '4.90', bk: 'Winline' }, p2: { val: '5.80', bk: 'Winline' } },
         bookmakers: [
           { name: 'Winline', p1: '1.50', x: '4.90', p2: '5.80' },
           { name: 'Фонбет',  p1: '1.48', x: '4.85', p2: '5.70' },
@@ -347,9 +365,9 @@
         ],
         explanationSummary: 'ЦСКА — явный фаворит в Москве (63% на победу в основное время) из-за разницы в классе составов и затяжной выездной серии хабаровчан.',
         reasons: [
-          { title: 'Тяжёлый выездной график Амура', detail: 'Для «Амура» это четвёртый выездной матч подряд на Западе; к третьему периоду команда теряет скорость.' },
-          { title: 'Надёжность обороны армейцев', detail: 'ЦСКА входит в топ-3 КХЛ по игре в меньшинстве и пропускает дома менее 1.9 шайбы за игру.' },
-          { title: 'Доминирование в Москве', detail: 'ЦСКА выиграл 8 из 9 последних очных встреч против «Амура» на своей площадке в основное время.' }
+          { title: 'Тяжёлый выездной график Амура', detail: 'Для «Амура» это четвёртый выездной матч подряд на Западе.' },
+          { title: 'Надёжность обороны армейцев', detail: 'ЦСКА входит в топ-3 КХЛ по игре в меньшинстве.' },
+          { title: 'Доминирование в Москве', detail: 'ЦСКА выиграл 8 из 9 последних очных встреч против «Амура» дома.' }
         ]
       },
       {
@@ -372,11 +390,7 @@
         prob: { p1: 72, x: 16, p2: 12 },
         favorite: { team: 'Локомотив', chance: 72, side: 'П1' },
         valueTag: 'Топ-фаворит дня',
-        bestOdds: {
-          p1: { val: '1.31', bk: 'BetBoom' },
-          x:  { val: '6.30', bk: 'Winline' },
-          p2: { val: '7.97', bk: 'BetBoom' }
-        },
+        bestOdds: { p1: { val: '1.31', bk: 'BetBoom' }, x: { val: '6.30', bk: 'Winline' }, p2: { val: '7.97', bk: 'BetBoom' } },
         bookmakers: [
           { name: 'Winline', p1: '1.30', x: '6.30', p2: '7.90' },
           { name: 'BetBoom', p1: '1.31', x: '5.58', p2: '7.97' },
@@ -384,13 +398,11 @@
         ],
         explanationSummary: '«Локомотив» обладает самым высоким шансом на победу в КХЛ сегодня (72%): ярославцы выиграли 10 последних очных матчей у «Сочи».',
         reasons: [
-          { title: 'Серия из 10 побед подряд над Сочи', detail: 'В последних пяти очных матчах «Локомотив» трижды громил сочинцев с разницей минимум в 3 шайбы (включая 6:2 две недели назад).' },
-          { title: 'Лучшая защита лиги', detail: 'За последние 5 матчей «Локомотив» пропустил всего 3 шайбы (включая сухую победу 5:0), тогда как «Сочи» пропустил 14.' },
-          { title: 'Полное доминирование по xG', detail: 'Модель ожидаемых голов оценивает атакующий перевес Ярославля в 2.92 против 1.46 xG у гостей.' }
+          { title: 'Серия из 10 побед подряд над Сочи', detail: 'В последних пяти очных матчах «Локомотив» трижды громил сочинцев с разницей минимум в 3 шайбы.' },
+          { title: 'Лучшая защита лиги', detail: 'За последние 5 матчей «Локомотив» пропустил всего 3 шайбы.' },
+          { title: 'Полное доминирование по xG', detail: 'Модель оценивает атакующий перевес Ярославля в 2.92 против 1.46 xG у гостей.' }
         ]
       },
-
-      // --- ЛИГА НАЦИЙ УЕФА (ВСЕ 10 МАТЧЕЙ СЕГОДНЯ, 16 НОЯБРЯ 2026) ---
       {
         id: 'unl-ger-ned',
         sport: 'football',
@@ -411,11 +423,7 @@
         prob: { p1: 50, x: 23, p2: 27 },
         favorite: { team: 'Германия', chance: 50, side: 'П1' },
         valueTag: 'Главный матч дня',
-        bestOdds: {
-          p1: { val: '1.91', bk: 'Winline' },
-          x:  { val: '4.33', bk: 'Pinnacle' },
-          p2: { val: '3.80', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '1.91', bk: 'Winline' }, x: { val: '4.33', bk: 'Pinnacle' }, p2: { val: '3.80', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline',  p1: '1.91', x: '4.10', p2: '3.65' },
           { name: 'Pinnacle', p1: '1.90', x: '4.33', p2: '3.80' },
@@ -423,9 +431,9 @@
         ],
         explanationSummary: 'Битва за 1-е место в группе: у Германии 50% шансов на победу за счёт домашнего стадиона в Берлине и высокой результативности.',
         reasons: [
-          { title: 'Фактор домашнего поля в Берлине', detail: 'Германия выиграла 7 из 9 последних официальных домашних игр, забивая в среднем 2.4 мяча.' },
+          { title: 'Фактор домашнего поля в Берлине', detail: 'Германия выиграла 7 из 9 последних официальных домашних игр.' },
           { title: 'Мотивация за первое место в группе', detail: 'Победа гарантирует Бундестим выход в плей-офф с первой строчки.' },
-          { title: 'Уязвимость Нидерландов в гостях', detail: 'Нидерланды пропускали в 6 последних выездных встречах против сборных из топ-10 рейтинга ФИФА.' }
+          { title: 'Уязвимость Нидерландов в гостях', detail: 'Нидерланды пропускали в 6 последних выездных встречах против сборных из топ-10.' }
         ]
       },
       {
@@ -448,21 +456,17 @@
         prob: { p1: 66, x: 20, p2: 14 },
         favorite: { team: 'Греция', chance: 66, side: 'П1' },
         valueTag: 'Value +3.1%',
-        bestOdds: {
-          p1: { val: '1.45', bk: 'Winline' },
-          x:  { val: '5.00', bk: 'Pinnacle' },
-          p2: { val: '7.50', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '1.45', bk: 'Winline' }, x: { val: '5.00', bk: 'Pinnacle' }, p2: { val: '7.50', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline',  p1: '1.45', x: '4.80', p2: '7.10' },
           { name: 'Pinnacle', p1: '1.44', x: '5.00', p2: '7.50' },
           { name: 'Фонбет',   p1: '1.43', x: '4.90', p2: '7.20' }
         ],
-        explanationSummary: 'У сборной Греции 66% вероятности победы: Сербия переживает глубокий кризис и проиграла 5 матчей подряд в текущем розыгрыше.',
+        explanationSummary: 'У сборной Греции 66% вероятности победы: Сербия переживает кризис и проиграла 5 матчей подряд.',
         reasons: [
-          { title: 'Серия из 5 поражений у Сербии', detail: 'Сербы замыкают таблицу группы с 0 очков и пропускают в среднем 2.3 гола за матч.' },
-          { title: 'Победа Греции в первом круге', detail: 'Греки уже обыгрывали Сербию на выезде (2:1) и дома играют ещё агрессивнее.' },
-          { title: 'Турнирная борьба за топ-2', detail: 'Греции необходимы 3 очка, чтобы сохранить шансы на выход в четвертьфинал Лиги наций.' }
+          { title: 'Серия из 5 поражений у Сербии', detail: 'Сербы замыкают таблицу группы с 0 очков.' },
+          { title: 'Победа Греции в первом круге', detail: 'Греки уже обыгрывали Сербию на выезде (2:1).' },
+          { title: 'Турнирная борьба за топ-2', detail: 'Греции необходимы 3 очка для выхода в четвертьфинал.' }
         ]
       },
       {
@@ -485,20 +489,16 @@
         prob: { p1: 53, x: 26, p2: 21 },
         favorite: { team: 'Швейцария', chance: 53, side: 'П1' },
         valueTag: 'Value +2.6%',
-        bestOdds: {
-          p1: { val: '1.80', bk: 'Pinnacle' },
-          x:  { val: '3.75', bk: 'Winline' },
-          p2: { val: '5.00', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '1.80', bk: 'Pinnacle' }, x: { val: '3.75', bk: 'Winline' }, p2: { val: '5.00', bk: 'Pari' } },
         bookmakers: [
           { name: 'Pinnacle', p1: '1.80', x: '3.64', p2: '4.70' },
           { name: 'Winline',  p1: '1.78', x: '3.75', p2: '4.80' },
           { name: 'Pari',     p1: '1.77', x: '3.70', p2: '5.00' }
         ],
-        explanationSummary: 'Швейцария имеет 53% шансов на успех благодаря мощной домашней серии и слабой игре Шотландии на выезде.',
+        explanationSummary: 'Швейцария имеет 53% шансов на успех благодаря мощной домашней серии.',
         reasons: [
-          { title: 'Беспроигрышная серия дома', detail: 'Швейцария не уступает на своём поле в официальных матчах более 2 лет.' },
-          { title: 'Низкая реализация Шотландии в гостях', detail: 'В последних 5 гостевых встречах шотландцы забивали менее 0.8 гола за матч.' },
+          { title: 'Беспроигрышная серия дома', detail: 'Швейцария не уступает на своём поле более 2 лет.' },
+          { title: 'Низкая реализация Шотландии в гостях', detail: 'В последних 5 гостевых встречах шотландцы забивали менее 0.8 гола.' },
           { title: 'Контроль владения', detail: 'Модель прогнозирует 61% владения мячом за хозяевами.' }
         ]
       },
@@ -513,7 +513,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига B',
         time: 'Сегодня, 22:45 МСК',
-        venue: 'Арена Тоше Проески, Скопье',
+        venue: 'Скопье',
         team1: 'Сев. Македония',
         team2: 'Словения',
         flag1: '🇲🇰',
@@ -522,21 +522,17 @@
         prob: { p1: 13, x: 24, p2: 63 },
         favorite: { team: 'Словения', chance: 63, side: 'П2' },
         valueTag: 'Уверенность: Высокая',
-        bestOdds: {
-          p1: { val: '7.25', bk: 'Pinnacle' },
-          x:  { val: '4.00', bk: 'Winline' },
-          p2: { val: '1.55', bk: 'BetBoom' }
-        },
+        bestOdds: { p1: { val: '7.25', bk: 'Pinnacle' }, x: { val: '4.00', bk: 'Winline' }, p2: { val: '1.55', bk: 'BetBoom' } },
         bookmakers: [
           { name: 'Winline',  p1: '7.00', x: '4.00', p2: '1.54' },
           { name: 'BetBoom',  p1: '7.10', x: '3.95', p2: '1.55' },
           { name: 'Pinnacle', p1: '7.25', x: '4.00', p2: '1.55' }
         ],
-        explanationSummary: 'Словения — уверенный выездной фаворит (63% на П2): гости выше классом и без проблем выиграли первый очный матч.',
+        explanationSummary: 'Словения — уверенный выездной фаворит (63% на П2).',
         reasons: [
-          { title: 'Уверенная победа в первой встрече', detail: 'Словения доминировала в первом матче группы и не позволила македонцам создать ни одного явного голевого момента.' },
-          { title: 'Дисциплина в обороне гостей', detail: 'Словения пропускает в среднем 0.7 мяча за игру в текущем турнире.' },
-          { title: 'Разница в кадровом потенциале', detail: 'Большинство игроков основы Словении выступают в топ-5 европейских лиг.' }
+          { title: 'Уверенная победа в первой встрече', detail: 'Словения доминировала в первом матче группы.' },
+          { title: 'Дисциплина в обороне гостей', detail: 'Словения пропускает в среднем 0.7 мяча за игру.' },
+          { title: 'Разница в кадровом потенциале', detail: 'Игроки основы Словении выступают в топ-5 европейских лиг.' }
         ]
       },
       {
@@ -550,7 +546,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига C',
         time: 'Сегодня, 18:00 МСК',
-        venue: 'Астана Арена, Астана',
+        venue: 'Астана Арена',
         team1: 'Казахстан',
         team2: 'Словакия',
         flag1: '🇰🇿',
@@ -559,21 +555,17 @@
         prob: { p1: 23, x: 27, p2: 50 },
         favorite: { team: 'Словакия', chance: 50, side: 'П2' },
         valueTag: 'Value +2.1%',
-        bestOdds: {
-          p1: { val: '4.20', bk: 'Winline' },
-          x:  { val: '3.60', bk: 'Фонбет' },
-          p2: { val: '1.92', bk: 'Pinnacle' }
-        },
+        bestOdds: { p1: { val: '4.20', bk: 'Winline' }, x: { val: '3.60', bk: 'Фонбет' }, p2: { val: '1.92', bk: 'Pinnacle' } },
         bookmakers: [
           { name: 'Winline',  p1: '4.20', x: '3.55', p2: '1.90' },
           { name: 'Фонбет',   p1: '4.10', x: '3.60', p2: '1.91' },
           { name: 'Pinnacle', p1: '4.20', x: '3.60', p2: '1.92' }
         ],
-        explanationSummary: 'Словакия идёт без поражений в группе и имеет 50% шансов на победу, но искусственный газон «Астана Арены» повышает вероятность ничьей (27%).',
+        explanationSummary: 'Словакия идёт без поражений в группе и имеет 50% шансов на победу в Астане.',
         reasons: [
           { title: 'Беспроигрышная серия Словакии', detail: 'Словаки не проигрывают в группе и борются за повышение в Лигу B.' },
-          { title: 'Сложный выезд в Астану', detail: 'Дальний перелёт и синтетическое поле традиционно помогают Казахстану сдерживать фаворитов.' },
-          { title: 'Кризис реализации хозяев', detail: 'Казахстан набрал всего 1 очко за 5 туров и забил 3 мяча.' }
+          { title: 'Сложный выезд в Астану', detail: 'Искусственный газон повышает вероятность ничьей (27%).' },
+          { title: 'Кризис реализации хозяев', detail: 'Казахстан набрал всего 1 очко за 5 туров.' }
         ]
       },
       {
@@ -587,7 +579,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига C',
         time: 'Сегодня, 18:00 МСК',
-        venue: 'Торсволлур, Торсхавн',
+        venue: 'Торсхавн',
         team1: 'Фарерские о-ва',
         team2: 'Молдова',
         flag1: '🇫🇴',
@@ -596,21 +588,17 @@
         prob: { p1: 52, x: 28, p2: 20 },
         favorite: { team: 'Фарерские о-ва', chance: 52, side: 'П1' },
         valueTag: 'Линия в балансе',
-        bestOdds: {
-          p1: { val: '1.80', bk: 'Winline' },
-          x:  { val: '3.50', bk: 'Pari' },
-          p2: { val: '4.80', bk: 'BetBoom' }
-        },
+        bestOdds: { p1: { val: '1.80', bk: 'Winline' }, x: { val: '3.50', bk: 'Pari' }, p2: { val: '4.80', bk: 'BetBoom' } },
         bookmakers: [
           { name: 'Winline', p1: '1.80', x: '3.45', p2: '4.70' },
           { name: 'Pari',    p1: '1.78', x: '3.50', p2: '4.75' },
           { name: 'BetBoom', p1: '1.79', x: '3.45', p2: '4.80' }
         ],
-        explanationSummary: 'Фарерские острова не проиграли ни одного матча в группе (5 ничьих подряд) и дома имеют 52% шансов дожать Молдову.',
+        explanationSummary: 'Фарерские острова дома имеют 52% шансов дожать Молдову.',
         reasons: [
-          { title: 'Неуступчивость Фарер дома', detail: 'В Торсхавне хозяева отобрали очки у всех соперников по группе, включая Словакию и Казахстан.' },
+          { title: 'Неуступчивость Фарер дома', detail: 'В Торсхавне хозяева отобрали очки у всех соперников по группе.' },
           { title: 'Слабая игра Молдовы в атаке', detail: 'Молдова редко создаёт больше 0.9 xG в выездных матчах.' },
-          { title: 'Высокий процент ничьих (28%)', detail: 'Обе команды делают ставку на плотную оборону, поэтому модель закладывает повышенный риск ничьей.' }
+          { title: 'Высокий процент ничьих (28%)', detail: 'Обе команды делают ставку на плотную оборону.' }
         ]
       },
       {
@@ -624,7 +612,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига C',
         time: 'Сегодня, 20:00 МСК',
-        venue: 'А. Ле Кок Арена, Таллин',
+        venue: 'Таллин',
         team1: 'Эстония',
         team2: 'Болгария',
         flag1: '🇪🇪',
@@ -633,21 +621,17 @@
         prob: { p1: 45, x: 30, p2: 25 },
         favorite: { team: 'Эстония', chance: 45, side: 'П1' },
         valueTag: 'Value +2.3%',
-        bestOdds: {
-          p1: { val: '2.10', bk: 'Winline' },
-          x:  { val: '3.30', bk: 'Фонбет' },
-          p2: { val: '3.80', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '2.10', bk: 'Winline' }, x: { val: '3.30', bk: 'Фонбет' }, p2: { val: '3.80', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline', p1: '2.10', x: '3.25', p2: '3.75' },
           { name: 'Фонбет',  p1: '2.08', x: '3.30', p2: '3.70' },
           { name: 'Pari',    p1: '2.07', x: '3.25', p2: '3.80' }
         ],
-        explanationSummary: 'Эстония подходит к домашней игре после двух побед подряд (45% на П1), тогда как Болгария в прошлом туре разгромно уступила Исландии 0:5.',
+        explanationSummary: 'Эстония подходит к домашней игре после двух побед подряд (45% на П1).',
         reasons: [
-          { title: 'Психологический спад Болгарии', detail: 'Разгром 0:5 в предыдущем туре ударил по уверенности обороны гостей.' },
-          { title: 'Надёжная защита Эстонии', detail: 'Эстония не пропускает в 3 из 4 последних матчей Лиги наций.' },
-          { title: 'Высокая вероятность ничьей (30%)', detail: 'В первом круге команды сыграли 0:0, поэтому ничейный исход остаётся вторым по вероятности.' }
+          { title: 'Психологический спад Болгарии', detail: 'Разгром 0:5 в предыдущем туре ударил по обороне гостей.' },
+          { title: 'Надёжная защита Эстонии', detail: 'Эстония не пропускает в 3 из 4 последних матчей.' },
+          { title: 'Высокая вероятность ничьей (30%)', detail: 'В первом круге команды сыграли 0:0.' }
         ]
       },
       {
@@ -670,21 +654,17 @@
         prob: { p1: 77, x: 16, p2: 7 },
         favorite: { team: 'Исландия', chance: 77, side: 'П1' },
         valueTag: 'Уверенность: Высокая',
-        bestOdds: {
-          p1: { val: '1.26', bk: 'Winline' },
-          x:  { val: '6.00', bk: 'Pinnacle' },
-          p2: { val: '13.00', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '1.26', bk: 'Winline' }, x: { val: '6.00', bk: 'Pinnacle' }, p2: { val: '13.00', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline',  p1: '1.26', x: '5.80', p2: '12.50' },
           { name: 'Pinnacle', p1: '1.26', x: '6.00', p2: '13.00' },
           { name: 'Pari',     p1: '1.25', x: '5.90', p2: '13.00' }
         ],
-        explanationSummary: 'Исландия — явный фаворит в Рейкьявике (77% на победу): хозяева набрали мощный ход и разгромили Болгарию 5:0 в прошлом туре.',
+        explanationSummary: 'Исландия — явный фаворит в Рейкьявике (77% на победу).',
         reasons: [
-          { title: 'Мощная атака Исландии', detail: 'Исландцы забили 8 мячей в двух последних играх и уверенно лидируют в группе.' },
-          { title: 'Серия поражений Люксембурга', detail: 'Гости проиграли 3 матча подряд и испытывают трудности при стандартных положениях.' },
-          { title: 'Климатический фактор Рейкьявика', detail: 'Холодная погода и жёсткий прессинг хозяев дают Исландии ощутимый перевес.' }
+          { title: 'Мощная атака Исландии', detail: 'Исландцы забили 8 мячей в двух последних играх.' },
+          { title: 'Серия поражений Люксембурга', detail: 'Гости проиграли 3 матча подряд.' },
+          { title: 'Климатический фактор Рейкьявика', detail: 'Жёсткий прессинг хозяев даёт Исландии ощутимый перевес.' }
         ]
       },
       {
@@ -698,7 +678,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига D',
         time: 'Сегодня, 20:00 МСК',
-        venue: 'Стадион им. Дарюса и Гиренаса, Каунас',
+        venue: 'Каунас',
         team1: 'Литва',
         team2: 'Лихтенштейн',
         flag1: '🇱🇹',
@@ -707,20 +687,16 @@
         prob: { p1: 86, x: 11, p2: 3 },
         favorite: { team: 'Литва', chance: 86, side: 'П1' },
         valueTag: 'Макс. шанс (86%)',
-        bestOdds: {
-          p1: { val: '1.13', bk: 'Winline' },
-          x:  { val: '9.00', bk: 'Pinnacle' },
-          p2: { val: '29.00', bk: 'Pari' }
-        },
+        bestOdds: { p1: { val: '1.13', bk: 'Winline' }, x: { val: '9.00', bk: 'Pinnacle' }, p2: { val: '29.00', bk: 'Pari' } },
         bookmakers: [
           { name: 'Winline',  p1: '1.13', x: '8.50', p2: '26.00' },
           { name: 'Pinnacle', p1: '1.13', x: '9.00', p2: '29.00' },
           { name: 'Pari',     p1: '1.12', x: '8.80', p2: '29.00' }
         ],
-        explanationSummary: 'Самый высокий процент победы дня — у сборной Литвы (86%) против аутсайдера Лихтенштейна.',
+        explanationSummary: 'Самый высокий процент победы дня — у сборной Литвы (86%).',
         reasons: [
-          { title: 'Огромная разница в классе', detail: 'Литва превосходит соперника по владению мячом (68% против 32%) и количеству ударов в створ.' },
-          { title: 'Домашний стадион в Каунасе', detail: 'На своём поле Литва стабильно дожимает сборные из четвёртой корзины.' },
+          { title: 'Огромная разница в классе', detail: 'Литва превосходит соперника по владению мячом (68% против 32%).' },
+          { title: 'Домашний стадион в Каунасе', detail: 'На своём поле Литва стабильно дожимает сборные четвёртой корзины.' },
           { title: 'Слабая атака Лихтенштейна', detail: 'Гости забивают в среднем 0.2 гола за выездной матч.' }
         ]
       },
@@ -735,7 +711,7 @@
         score: { home: 0, away: 0 },
         league: 'Лига наций УЕФА • Лига D',
         time: 'Сегодня, 22:45 МСК',
-        venue: 'Европа Спортс Парк, Гибралтар',
+        venue: 'Гибралтар',
         team1: 'Гибралтар',
         team2: 'Мальта',
         flag1: '🇬🇮',
@@ -744,21 +720,17 @@
         prob: { p1: 12, x: 25, p2: 63 },
         favorite: { team: 'Мальта', chance: 63, side: 'П2' },
         valueTag: 'Линия в балансе',
-        bestOdds: {
-          p1: { val: '8.00', bk: 'Pinnacle' },
-          x:  { val: '3.80', bk: 'Winline' },
-          p2: { val: '1.53', bk: 'BetBoom' }
-        },
+        bestOdds: { p1: { val: '8.00', bk: 'Pinnacle' }, x: { val: '3.80', bk: 'Winline' }, p2: { val: '1.53', bk: 'BetBoom' } },
         bookmakers: [
           { name: 'Winline',  p1: '7.80', x: '3.80', p2: '1.52' },
           { name: 'BetBoom',  p1: '7.90', x: '3.75', p2: '1.53' },
           { name: 'Pinnacle', p1: '8.00', x: '3.80', p2: '1.53' }
         ],
-        explanationSummary: 'Мальта борется за выход в Лигу C и имеет 63% шансов на выездную победу над Гибралтаром.',
+        explanationSummary: 'Мальта борется за выход в Лигу C и имеет 63% шансов на выездную победу.',
         reasons: [
-          { title: 'Турнирная мотивация Мальты', detail: 'Победа позволяет Мальте обойти Андорру и занять 1-е место в группе.' },
-          { title: 'Превосходство в позиционной атаке', detail: 'Мальта уже обыгрывала Гибралтар в очных матчах и превосходит хозяев в скорости.' },
-          { title: 'Низкая результативность Гибралтара', detail: 'Хозяева практически не создают моментов с игры, уповая только на стандарты.' }
+          { title: 'Турнирная мотивация Мальты', detail: 'Победа позволяет Мальте занять 1-е место в группе.' },
+          { title: 'Превосходство в позиционной атаке', detail: 'Мальта превосходит хозяев в скорости и контроле мяча.' },
+          { title: 'Низкая результативность Гибралтара', detail: 'Хозяева практически не создают моментов с игры.' }
         ]
       }
     ];
@@ -768,109 +740,14 @@
     let selectedExpress = {};
     let openedSheetMatchId = null;
 
-    let currentUser = { id: null, name: 'Гость' };
+    let currentUser = { id: 0, name: 'Гость' };
     let isOwner = false;
     let adminForceFreeView = false;
     let vipList = JSON.parse(localStorage.getItem('cs_vip_users') || '[]');
     let hasPaidSub = localStorage.getItem('cs_pro_stars_active') === 'true';
 
     // =========================================================================
-    // ДИНАМИЧЕСКИЙ LIVE-ПЕРЕСЧЁТ ПРОГНОЗА И АВТООЧИСТКА ЗАВЕРШЁННЫХ МАТЧЕЙ
-    // =========================================================================
-    function recalculateLiveModel(m) {
-      const now = Date.now();
-      const start = m.startTs ? Date.parse(m.startTs) : null;
-      const durationMs = m.sport === 'football' ? 115 * 60 * 1000 : 150 * 60 * 1000;
-
-      // Определяем статус по реальному времени, если API ещё не прислал финальный флаг
-      if (start && m.status !== 'finished') {
-        if (now >= start + durationMs) {
-          m.status = 'finished';
-        } else if (now >= start && m.status === 'upcoming') {
-          m.status = 'live';
-          const elapsedMin = Math.max(1, Math.floor((now - start) / 60000));
-          if (m.sport === 'football') {
-            m.liveClock = elapsedMin <= 45 ? `${elapsedMin}'` : (elapsedMin <= 60 ? 'Перерыв' : `${Math.min(90, elapsedMin - 15)}'`);
-          } else {
-            m.liveClock = elapsedMin <= 20 ? `1-й пер. ${elapsedMin}'` : (elapsedMin <= 55 ? `2-й пер.` : `3-й пер.`);
-          }
-        }
-      }
-
-      // Если матч в LIVE — пересчитываем процент победы в реальном времени с учётом счёта!
-      if (m.status === 'live') {
-        const base = m.baseProb || m.prob;
-        const diff = (m.score?.home || 0) - (m.score?.away || 0);
-        const weight = m.sport === 'football' ? 24 : 16; // Вес 1 гола в футболе выше, чем 1 шайбы в хоккее
-
-        let p1 = base.p1 + diff * weight;
-        let p2 = base.p2 - diff * weight;
-        let x = base.x - Math.abs(diff) * (m.sport === 'football' ? 8 : 5);
-
-        p1 = Math.max(3, Math.min(94, p1));
-        p2 = Math.max(3, Math.min(94, p2));
-        x = Math.max(3, Math.min(45, x));
-
-        const sum = p1 + x + p2;
-        m.prob = {
-          p1: Math.round((p1 / sum) * 100),
-          x: Math.round((x / sum) * 100),
-          p2: 100 - Math.round((p1 / sum) * 100) - Math.round((x / sum) * 100)
-        };
-
-        if (m.prob.p1 >= m.prob.p2) {
-          m.favorite = { team: m.team1, chance: m.prob.p1, side: 'П1' };
-        } else {
-          m.favorite = { team: m.team2, chance: m.prob.p2, side: 'П2' };
-        }
-      }
-      return m;
-    }
-
-    function applyLiveLifecycle() {
-      // Пересчитываем live-вероятности и сразу убираем завершившиеся матчи
-      matchesData = matchesData
-        .map(recalculateLiveModel)
-        .filter(m => m.status !== 'finished');
-
-      // Обновляем счётчики на фильтрах
-      document.getElementById('cnt-all').textContent = matchesData.length;
-      document.getElementById('cnt-live').textContent = matchesData.filter(m => m.status === 'live').length;
-      document.getElementById('cnt-football').textContent = matchesData.filter(m => m.sport === 'football').length;
-      document.getElementById('cnt-hockey').textContent = matchesData.filter(m => m.sport === 'hockey').length;
-
-      renderFeatured();
-      renderMatches();
-
-      // Если у пользователя открыто окно конкретного матча — обновляем его вживую
-      if (openedSheetMatchId) {
-        const activeMatch = matchesData.find(m => m.id === openedSheetMatchId);
-        if (activeMatch) {
-          openSheet(activeMatch, true);
-        } else {
-          closeSheet(); // Матч закончился и был удалён
-        }
-      }
-    }
-
-    // Симуляция гола из Админки для мгновенной проверки Live-пересчёта
-    function simulateLiveGoal() {
-      if (!matchesData.length) return;
-      const target = matchesData.find(m => m.status === 'live') || matchesData[0];
-      target.status = 'live';
-      target.liveClock = target.sport === 'football' ? "67'" : "2-й пер. 14'";
-      if (Math.random() > 0.4) {
-        target.score.home += 1;
-      } else {
-        target.score.away += 1;
-      }
-      applyLiveLifecycle();
-      switchTab('matches');
-      openSheet(target);
-    }
-
-    // =========================================================================
-    // ПРАВА ДОСТУПА (ADMIN 6851997342 / PRO 499 STARS)
+    // ПРАВА ДОСТУПА (СТРОГО ТОЛЬКО ДЛЯ ID 6851997342) И ПРОВЕРКА ПОДПИСКИ
     // =========================================================================
     function initUserAndPermissions() {
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -878,19 +755,17 @@
         currentUser.id = Number(tgUser.id);
         currentUser.name = tgUser.first_name || 'Пользователь';
       } else {
-        // По умолчанию гостевой режим без прав администратора
         currentUser.id = 0;
         currentUser.name = 'Гость';
       }
 
-      isOwner = ADMIN_TELEGRAM_IDS.includes(currentUser.id);
+      isOwner = (currentUser.id !== 0) && ADMIN_TELEGRAM_IDS.includes(currentUser.id);
       document.getElementById('admin-my-id').textContent = currentUser.id || 'Не определён';
 
       if (isOwner) {
         document.getElementById('role-badge').classList.remove('hidden');
         document.getElementById('nav-admin').classList.remove('hidden');
       } else {
-        // Принудительно скрываем админку и сбрасываем режим просмотра для всех остальных
         document.getElementById('role-badge').classList.add('hidden');
         document.getElementById('nav-admin').classList.add('hidden');
         document.getElementById('view-admin').classList.add('hidden');
@@ -899,11 +774,50 @@
 
       updateAccessUI();
       renderVipUsersList();
+      verifyChannelSubscription();
+    }
+
+    async function verifyChannelSubscription() {
+      const gate = document.getElementById('sub-gate-modal');
+      const errMsg = document.getElementById('gate-error-msg');
+      const btn = document.getElementById('gate-check-btn');
+      document.getElementById('gate-channel-link').href = REQUIRED_CHANNEL_URL;
+
+      if (isOwner) {
+        gate.classList.add('hidden');
+        return;
+      }
+
+      if (!currentUser.id || BOT_TOKEN_FOR_CHECK.includes('ВСТАВЬТЕ')) {
+        gate.classList.add('hidden');
+        return;
+      }
+
+      btn.textContent = '⏳ Проверяем подписку...';
+      errMsg.classList.add('hidden');
+
+      try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN_FOR_CHECK}/getChatMember?chat_id=${encodeURIComponent(REQUIRED_CHANNEL)}&user_id=${currentUser.id}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const status = data?.result?.status;
+
+        if (data.ok && ['member', 'administrator', 'creator'].includes(status)) {
+          gate.classList.add('hidden');
+        } else {
+          gate.classList.remove('hidden');
+          errMsg.classList.remove('hidden');
+        }
+      } catch (e) {
+        gate.classList.remove('hidden');
+      } finally {
+        btn.textContent = '✅ Я подписался (Проверить)';
+      }
     }
 
     function hasProAccess() {
       if (isOwner && !adminForceFreeView) return true;
-      if (vipList.includes(currentUser.id)) return true;
+      if (currentUser.id && vipList.includes(currentUser.id)) return true;
       return hasPaidSub;
     }
 
@@ -930,6 +844,7 @@
     }
 
     function switchTab(tab) {
+      if (tab === 'admin' && !isOwner) return;
       document.getElementById('view-matches').classList.add('hidden');
       document.getElementById('view-express').classList.add('hidden');
       document.getElementById('view-admin').classList.add('hidden');
@@ -937,7 +852,9 @@
 
       ['nav-matches', 'nav-express', 'nav-admin'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.className = 'flex flex-col items-center text-slate-400 font-medium relative';
+        if (el) el.className = el.classList.contains('hidden')
+          ? 'hidden flex flex-col items-center text-slate-400 font-medium relative'
+          : 'flex flex-col items-center text-slate-400 font-medium relative';
       });
 
       document.getElementById(`view-${tab}`).classList.remove('hidden');
@@ -945,6 +862,81 @@
       if (activeNav) activeNav.className = 'flex flex-col items-center text-[#0F172A] font-bold relative';
 
       if (tab === 'express') renderExpressBuilder();
+    }
+
+    // =========================================================================
+    // LIVE-ПЕРЕСЧЁТ И АВТОУДАЛЕНИЕ ЗАВЕРШЁННЫХ МАТЧЕЙ
+    // =========================================================================
+    function recalculateLiveModel(m) {
+      const now = Date.now();
+      const start = m.startTs ? Date.parse(m.startTs) : null;
+      const durationMs = m.sport === 'football' ? 115 * 60 * 1000 : 150 * 60 * 1000;
+
+      if (start && m.status !== 'finished') {
+        if (now >= start + durationMs) {
+          m.status = 'finished';
+        } else if (now >= start && m.status === 'upcoming') {
+          m.status = 'live';
+          const elapsedMin = Math.max(1, Math.floor((now - start) / 60000));
+          if (m.sport === 'football') {
+            m.liveClock = elapsedMin <= 45 ? `${elapsedMin}'` : (elapsedMin <= 60 ? 'Перерыв' : `${Math.min(90, elapsedMin - 15)}'`);
+          } else {
+            m.liveClock = elapsedMin <= 20 ? `1-й пер. ${elapsedMin}'` : (elapsedMin <= 55 ? `2-й пер.` : `3-й пер.`);
+          }
+        }
+      }
+
+      if (m.status === 'live') {
+        const base = m.baseProb || m.prob;
+        const diff = (m.score?.home || 0) - (m.score?.away || 0);
+        const weight = m.sport === 'football' ? 24 : 16;
+
+        let p1 = Math.max(3, Math.min(94, base.p1 + diff * weight));
+        let p2 = Math.max(3, Math.min(94, base.p2 - diff * weight));
+        let x = Math.max(3, Math.min(45, base.x - Math.abs(diff) * (m.sport === 'football' ? 8 : 5)));
+
+        const sum = p1 + x + p2;
+        m.prob = {
+          p1: Math.round((p1 / sum) * 100),
+          x: Math.round((x / sum) * 100),
+          p2: 100 - Math.round((p1 / sum) * 100) - Math.round((x / sum) * 100)
+        };
+
+        m.favorite = m.prob.p1 >= m.prob.p2
+          ? { team: m.team1, chance: m.prob.p1, side: 'П1' }
+          : { team: m.team2, chance: m.prob.p2, side: 'П2' };
+      }
+      return m;
+    }
+
+    function applyLiveLifecycle() {
+      matchesData = matchesData.map(recalculateLiveModel).filter(m => m.status !== 'finished');
+
+      document.getElementById('cnt-all').textContent = matchesData.length;
+      document.getElementById('cnt-live').textContent = matchesData.filter(m => m.status === 'live').length;
+      document.getElementById('cnt-football').textContent = matchesData.filter(m => m.sport === 'football').length;
+      document.getElementById('cnt-hockey').textContent = matchesData.filter(m => m.sport === 'hockey').length;
+
+      renderFeatured();
+      renderMatches();
+
+      if (openedSheetMatchId) {
+        const activeMatch = matchesData.find(m => m.id === openedSheetMatchId);
+        if (activeMatch) openSheet(activeMatch, true);
+        else closeSheet();
+      }
+    }
+
+    function simulateLiveGoal() {
+      if (!matchesData.length) return;
+      const target = matchesData.find(m => m.status === 'live') || matchesData[0];
+      target.status = 'live';
+      target.liveClock = target.sport === 'football' ? "67'" : "2-й пер. 14'";
+      if (Math.random() > 0.4) target.score.home += 1;
+      else target.score.away += 1;
+      applyLiveLifecycle();
+      switchTab('matches');
+      openSheet(target);
     }
 
     // =========================================================================
@@ -985,18 +977,10 @@
     function toggleExpressPick(matchId, side) {
       const m = matchesData.find(item => item.id === matchId);
       if (!m) return;
-
-      if (selectedExpress[matchId]?.side === side) {
-        delete selectedExpress[matchId];
-      } else {
+      if (selectedExpress[matchId]?.side === side) delete selectedExpress[matchId];
+      else {
         const sideNames = { p1: `Победа ${m.team1} (П1)`, x: 'Ничья (Х)', p2: `Победа ${m.team2} (П2)` };
-        selectedExpress[matchId] = {
-          side,
-          label: sideNames[side],
-          odd: parseFloat(m.bestOdds[side].val),
-          prob: m.prob[side],
-          match: m
-        };
+        selectedExpress[matchId] = { side, label: sideNames[side], odd: parseFloat(m.bestOdds[side].val), prob: m.prob[side], match: m };
       }
       document.getElementById('ai-express-result').classList.add('hidden');
       renderExpressBuilder();
@@ -1016,11 +1000,7 @@
     }
 
     function runAiExpressCheck() {
-      if (!hasProAccess()) {
-        openPaymentModal();
-        return;
-      }
-
+      if (!hasProAccess()) { openPaymentModal(); return; }
       const picks = Object.values(selectedExpress);
       const resBox = document.getElementById('ai-express-result');
 
@@ -1030,7 +1010,6 @@
         return;
       }
 
-      // Актуализируем вероятности с учётом Live-счёта
       picks.forEach(p => {
         const fresh = matchesData.find(item => item.id === p.match.id);
         if (fresh) p.prob = fresh.prob[p.side];
@@ -1041,9 +1020,7 @@
       const weakest = [...picks].sort((a, b) => a.prob - b.prob)[0];
       const m = weakest.match;
 
-      let adviceText = '';
-      let replacementBadge = '';
-
+      let adviceText = '', replacementBadge = '';
       if (weakest.side === 'x') {
         const saferTeam = m.prob.p1 >= m.prob.p2 ? `${m.team1} (1Х)` : `${m.team2} (Х2)`;
         const saferProb = m.prob.p1 >= m.prob.p2 ? (m.prob.p1 + m.prob.x) : (m.prob.p2 + m.prob.x);
@@ -1053,10 +1030,10 @@
         const doubleChance = weakest.side === 'p1' ? `1Х (${m.team1} не проиграет)` : `Х2 (${m.team2} не проиграет)`;
         const newProb = weakest.prob + m.prob.x;
         replacementBadge = `Подстраховка: ${doubleChance}`;
-        adviceText = `Исход «${weakest.label}» в матче «${m.team1} — ${m.team2}» — слабое звено экспресса (шанс ${weakest.prob}%, высокий риск ничьей ${m.prob.x}%). Лучше заменить чистую победу на <strong>${doubleChance}</strong>: вероятность события поднимется до <strong>${newProb}%</strong>.`;
+        adviceText = `Исход «${weakest.label}» в матче «${m.team1} — ${m.team2}» — слабое звено экспресса (шанс ${weakest.prob}%, риск ничьей ${m.prob.x}%). Лучше заменить на <strong>${doubleChance}</strong>: вероятность события поднимется до <strong>${newProb}%</strong>.`;
       } else {
         replacementBadge = 'Экспресс сбалансирован';
-        adviceText = `Все выбранные события имеют математически обоснованный перевес. Самый осторожный пункт — «${weakest.label}» (${weakest.prob}%), при желании его можно подстраховать форой (0).`;
+        adviceText = `Все выбранные события имеют математически обоснованный перевес. Самый осторожный пункт — «${weakest.label}» (${weakest.prob}%).`;
       }
 
       const riskLabel = combinedProb >= 25 ? 'Умеренный риск' : (combinedProb >= 14 ? 'Повышенный риск' : 'Высокий риск');
@@ -1100,12 +1077,7 @@
       const tg = window.Telegram?.WebApp;
       if (tg && tg.sendData) {
         try {
-          tg.sendData(JSON.stringify({
-            action: 'buy_pro_stars',
-            stars: SUBSCRIPTION_STARS_PRICE,
-            currency: 'XTR',
-            user_id: currentUser.id
-          }));
+          tg.sendData(JSON.stringify({ action: 'buy_pro_stars', stars: SUBSCRIPTION_STARS_PRICE, currency: 'XTR', user_id: currentUser.id }));
         } catch (e) {}
       }
       closePaymentModal();
@@ -1120,6 +1092,7 @@
     }
 
     function setAdminSimMode(mode) {
+      if (!isOwner) return;
       adminForceFreeView = (mode === 'free');
       document.getElementById('btn-mode-vip').className = !adminForceFreeView
         ? 'py-2.5 px-3 rounded-xl text-xs font-bold bg-[#0F172A] text-white'
@@ -1131,6 +1104,7 @@
     }
 
     function grantFreePro() {
+      if (!isOwner) return;
       const input = document.getElementById('grant-user-id');
       const id = Number(input.value.trim());
       if (!id) return;
@@ -1143,6 +1117,7 @@
     }
 
     function revokeFreePro(id) {
+      if (!isOwner) return;
       vipList = vipList.filter(item => item !== id);
       localStorage.setItem('cs_vip_users', JSON.stringify(vipList));
       renderVipUsersList();
@@ -1163,39 +1138,33 @@
     }
 
     // =========================================================================
-    // ЗАГРУЗКА И ОТРИСОВКА КАРТОЧЕК МАТЧЕЙ (С LIVE-СЧЁТОМ)
+    // ЗАГРУЗКА И ОТРИСОВКА КАРТОЧЕК МАТЧЕЙ
     // =========================================================================
-    async function loadMatchesFromFeed(silent = false) {
+    async function loadMatchesFromFeed() {
       const statusEl = document.getElementById('sync-status');
-
       try {
         const response = await fetch(`./matches.json?t=${Date.now()}`);
         if (!response.ok) throw new Error('No feed');
         const data = await response.json();
         if (data.matches && data.matches.length > 0) {
-          // Сохраняем локальные live-симуляции, если есть
           matchesData = data.matches.map(m => ({ ...m, baseProb: m.baseProb || m.prob }));
           statusEl.textContent = `Live-синхронизация • ${data.updated_at || 'онлайн'}`;
         } else {
           throw new Error('Empty');
         }
       } catch (err) {
-        if (!matchesData.length) {
-          matchesData = JSON.parse(JSON.stringify(fallbackMatches));
-        }
+        if (!matchesData.length) matchesData = JSON.parse(JSON.stringify(fallbackMatches));
         const liveCnt = matchesData.filter(m => m.status === 'live').length;
         statusEl.textContent = liveCnt > 0
           ? `● LIVE матчей сейчас: ${liveCnt} • Автоочистка активна`
           : `16 ноября • Лига наций и КХЛ (${matchesData.length} игр)`;
       }
-
       applyLiveLifecycle();
     }
 
     function renderFeatured() {
       const container = document.getElementById('featured-carousel');
       const featured = matchesData.filter(m => m.featured);
-
       container.innerHTML = featured.map(m => {
         const isLive = m.status === 'live';
         return `
@@ -1226,18 +1195,9 @@
               <span class="text-xs font-extrabold text-white truncate max-w-[140px]">${m.favorite.team} — ${m.favorite.chance}%</span>
             </div>
             <div class="grid grid-cols-3 gap-1.5 text-center pt-1">
-              <div class="bg-slate-800/90 rounded-lg py-1">
-                <span class="text-[9px] text-slate-400 block">П1</span>
-                <span class="text-xs font-extrabold text-white">${m.bestOdds.p1.val}</span>
-              </div>
-              <div class="bg-slate-800/90 rounded-lg py-1">
-                <span class="text-[9px] text-slate-400 block">Х</span>
-                <span class="text-xs font-bold text-slate-200">${m.bestOdds.x.val}</span>
-              </div>
-              <div class="bg-slate-800/90 rounded-lg py-1">
-                <span class="text-[9px] text-slate-400 block">П2</span>
-                <span class="text-xs font-bold text-slate-200">${m.bestOdds.p2.val}</span>
-              </div>
+              <div class="bg-slate-800/90 rounded-lg py-1"><span class="text-[9px] text-slate-400 block">П1</span><span class="text-xs font-extrabold text-white">${m.bestOdds.p1.val}</span></div>
+              <div class="bg-slate-800/90 rounded-lg py-1"><span class="text-[9px] text-slate-400 block">Х</span><span class="text-xs font-bold text-slate-200">${m.bestOdds.x.val}</span></div>
+              <div class="bg-slate-800/90 rounded-lg py-1"><span class="text-[9px] text-slate-400 block">П2</span><span class="text-xs font-bold text-slate-200">${m.bestOdds.p2.val}</span></div>
             </div>
           </div>
         `;
@@ -1254,18 +1214,6 @@
       });
 
       document.getElementById('matches-count').textContent = `Активных матчей: ${filtered.length}`;
-
-      if (!filtered.length) {
-        container.innerHTML = `
-          <div class="bg-white rounded-2xl p-6 text-center border border-slate-200">
-            <div class="text-2xl mb-1">⏳</div>
-            <div class="text-sm font-bold text-[#0F172A]">В этой категории сейчас нет активных игр</div>
-            <p class="text-xs text-slate-400 mt-1">Завершившиеся матчи автоматически скрыты, новые появятся по расписанию.</p>
-          </div>
-        `;
-        return;
-      }
-
       container.innerHTML = filtered.map(m => {
         const isLive = m.status === 'live';
         return `
@@ -1277,34 +1225,21 @@
                 : `<span class="${m.isValue ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'} border font-semibold px-2 py-0.5 rounded-md">${m.valueTag}</span>`
               }
             </div>
-
             <div class="flex justify-between items-center mb-3">
-              <div class="flex items-center gap-2 font-bold text-sm text-[#0F172A]">
-                <span>${m.flag1}</span>
-                <span>${m.team1}</span>
-              </div>
+              <div class="flex items-center gap-2 font-bold text-sm text-[#0F172A]"><span>${m.flag1}</span><span>${m.team1}</span></div>
               ${isLive
                 ? `<div class="text-sm font-extrabold text-white bg-[#0F172A] px-3 py-1 rounded-xl shadow-sm tracking-wider">${m.score.home} : ${m.score.away}</div>`
                 : `<div class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded shrink-0">${m.time.includes(', ') ? m.time.split(', ')[1] : m.time}</div>`
               }
-              <div class="flex items-center gap-2 font-bold text-sm text-[#0F172A] text-right">
-                <span>${m.team2}</span>
-                <span>${m.flag2}</span>
-              </div>
+              <div class="flex items-center gap-2 font-bold text-sm text-[#0F172A] text-right"><span>${m.team2}</span><span>${m.flag2}</span></div>
             </div>
-
             <div class="bg-[#0F172A] text-white rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
               <div>
                 <div class="text-[10px] text-slate-400 font-medium">${isLive ? 'Live-прогноз (обновляется по ходу игры)' : 'Шанс на победу (модель)'}</div>
-                <div class="text-xs font-extrabold text-white mt-0.5">
-                  ${m.favorite.team} — <span class="${isLive ? 'text-rose-400' : 'text-blue-400'}">${m.favorite.chance}%</span>
-                </div>
+                <div class="text-xs font-extrabold text-white mt-0.5">${m.favorite.team} — <span class="${isLive ? 'text-rose-400' : 'text-blue-400'}">${m.favorite.chance}%</span></div>
               </div>
-              <span class="text-[11px] font-semibold bg-blue-600/30 border border-blue-500/40 text-blue-200 px-2.5 py-1 rounded-lg shrink-0">
-                Почему? →
-              </span>
+              <span class="text-[11px] font-semibold bg-blue-600/30 border border-blue-500/40 text-blue-200 px-2.5 py-1 rounded-lg shrink-0">Почему? →</span>
             </div>
-
             <div class="mb-3.5">
               <div class="flex justify-between text-[11px] font-bold mb-1">
                 <span class="text-[#1E3A8A]">П1: ${m.prob.p1}%</span>
@@ -1317,20 +1252,10 @@
                 <div class="prob-bar bg-slate-600 h-full rounded-r-full" style="width: ${m.prob.p2}%"></div>
               </div>
             </div>
-
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-100">
-              <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-2 text-center">
-                <div class="text-[10px] text-slate-500 font-medium truncate">П1 • ${m.bestOdds.p1.bk}</div>
-                <div class="text-sm font-extrabold text-[#1E3A8A]">${m.bestOdds.p1.val}</div>
-              </div>
-              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center">
-                <div class="text-[10px] text-slate-500 font-medium truncate">Х • ${m.bestOdds.x.bk}</div>
-                <div class="text-sm font-bold text-[#0F172A]">${m.bestOdds.x.val}</div>
-              </div>
-              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center">
-                <div class="text-[10px] text-slate-500 font-medium truncate">П2 • ${m.bestOdds.p2.bk}</div>
-                <div class="text-sm font-bold text-[#0F172A]">${m.bestOdds.p2.val}</div>
-              </div>
+              <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-2 text-center"><div class="text-[10px] text-slate-500 font-medium truncate">П1 • ${m.bestOdds.p1.bk}</div><div class="text-sm font-extrabold text-[#1E3A8A]">${m.bestOdds.p1.val}</div></div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center"><div class="text-[10px] text-slate-500 font-medium truncate">Х • ${m.bestOdds.x.bk}</div><div class="text-sm font-bold text-[#0F172A]">${m.bestOdds.x.val}</div></div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center"><div class="text-[10px] text-slate-500 font-medium truncate">П2 • ${m.bestOdds.p2.bk}</div><div class="text-sm font-bold text-[#0F172A]">${m.bestOdds.p2.val}</div></div>
             </div>
           </div>
         `;
@@ -1342,15 +1267,9 @@
         currentFilter = btn.dataset.filter;
         document.querySelectorAll('.filter-btn').forEach(b => {
           const isAct = b.dataset.filter === currentFilter;
-          if (b.dataset.filter === 'live') {
-            b.className = isAct
-              ? 'filter-btn bg-rose-600 text-white font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition flex items-center gap-1.5'
-              : 'filter-btn bg-slate-800/80 text-rose-300 hover:text-white font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 transition flex items-center gap-1.5';
-          } else {
-            b.className = isAct
-              ? 'filter-btn bg-white text-[#0F172A] font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition'
-              : 'filter-btn bg-slate-800/80 text-slate-300 hover:text-white font-medium text-xs px-3.5 py-1.5 rounded-full shrink-0 transition';
-          }
+          b.className = b.dataset.filter === 'live'
+            ? (isAct ? 'filter-btn bg-rose-600 text-white font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition flex items-center gap-1.5' : 'filter-btn bg-slate-800/80 text-rose-300 hover:text-white font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 transition flex items-center gap-1.5')
+            : (isAct ? 'filter-btn bg-white text-[#0F172A] font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition' : 'filter-btn bg-slate-800/80 text-slate-300 hover:text-white font-medium text-xs px-3.5 py-1.5 rounded-full shrink-0 transition');
         });
         renderMatches();
       });
@@ -1365,7 +1284,6 @@
       openedSheetMatchId = m.id;
       const isLive = m.status === 'live';
       const content = document.getElementById('sheet-content');
-
       content.innerHTML = `
         <div class="flex justify-between items-start mb-3">
           <div>
@@ -1375,87 +1293,21 @@
           </div>
           <button onclick="closeSheet()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center">✕</button>
         </div>
-
-        ${isLive ? `
-          <div class="bg-rose-600 text-white rounded-2xl p-3.5 mb-3 flex items-center justify-between shadow-sm">
-            <div>
-              <div class="text-[10px] font-bold uppercase tracking-wider text-rose-100">Текущий счёт Live</div>
-              <div class="text-xs font-semibold text-white mt-0.5">Прогноз пересчитан по ходу матча</div>
-            </div>
-            <div class="text-2xl font-extrabold tracking-widest bg-rose-800/60 px-3.5 py-1 rounded-xl">
-              ${m.score.home} : ${m.score.away}
-            </div>
-          </div>
-        ` : ''}
-
+        ${isLive ? `<div class="bg-rose-600 text-white rounded-2xl p-3.5 mb-3 flex items-center justify-between shadow-sm"><div><div class="text-[10px] font-bold uppercase tracking-wider text-rose-100">Текущий счёт Live</div><div class="text-xs font-semibold text-white mt-0.5">Прогноз пересчитан по ходу матча</div></div><div class="text-2xl font-extrabold tracking-widest bg-rose-800/60 px-3.5 py-1 rounded-xl">${m.score.home} : ${m.score.away}</div></div>` : ''}
         <div class="bg-[#0F172A] text-white rounded-2xl p-4 mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-slate-300 font-medium">${isLive ? 'Live-фаворит прямо сейчас' : 'Фаворит по расчёту модели'}</span>
-            <span class="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">
-              Шанс ${m.favorite.chance}%
-            </span>
-          </div>
+          <div class="flex items-center justify-between mb-2"><span class="text-xs text-slate-300 font-medium">${isLive ? 'Live-фаворит прямо сейчас' : 'Фаворит по расчёту модели'}</span><span class="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">Шанс ${m.favorite.chance}%</span></div>
           <div class="text-base font-extrabold text-white mb-2">${m.favorite.team} (${m.favorite.side})</div>
-          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex gap-0.5">
-            <div class="prob-bar bg-blue-500 h-full" style="width: ${m.prob.p1}%"></div>
-            <div class="prob-bar bg-slate-500 h-full" style="width: ${m.prob.x}%"></div>
-            <div class="prob-bar bg-slate-300 h-full" style="width: ${m.prob.p2}%"></div>
-          </div>
-          <div class="flex justify-between text-[11px] text-slate-300 font-semibold mt-1.5">
-            <span>${m.team1}: ${m.prob.p1}%</span>
-            <span>Ничья: ${m.prob.x}%</span>
-            <span>${m.team2}: ${m.prob.p2}%</span>
-          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex gap-0.5"><div class="prob-bar bg-blue-500 h-full" style="width: ${m.prob.p1}%"></div><div class="prob-bar bg-slate-500 h-full" style="width: ${m.prob.x}%"></div><div class="prob-bar bg-slate-300 h-full" style="width: ${m.prob.p2}%"></div></div>
+          <div class="flex justify-between text-[11px] text-slate-300 font-semibold mt-1.5"><span>${m.team1}: ${m.prob.p1}%</span><span>Ничья: ${m.prob.x}%</span><span>${m.team2}: ${m.prob.p2}%</span></div>
         </div>
-
         <div class="mb-4">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#1E3A8A] flex items-center justify-center text-xs font-extrabold">📋</span>
-            <h4 class="text-sm font-extrabold text-[#0F172A]">Объяснение: почему выше шанс на победу</h4>
-          </div>
-          <div class="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3.5 mb-3">
-            <p class="text-xs font-semibold text-[#0F172A] leading-relaxed">${m.explanationSummary}</p>
-          </div>
-          <div class="space-y-2.5">
-            ${m.reasons.map((r, idx) => `
-              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="w-5 h-5 rounded-full bg-[#0F172A] text-white text-[10px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
-                  <span class="text-xs font-bold text-[#0F172A]">${r.title}</span>
-                </div>
-                <p class="text-xs text-slate-600 leading-relaxed pl-7">${r.detail}</p>
-              </div>
-            `).join('')}
-          </div>
+          <div class="flex items-center gap-2 mb-2"><span class="w-6 h-6 rounded-lg bg-blue-50 text-[#1E3A8A] flex items-center justify-center text-xs font-extrabold">📋</span><h4 class="text-sm font-extrabold text-[#0F172A]">Объяснение: почему выше шанс на победу</h4></div>
+          <div class="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3.5 mb-3"><p class="text-xs font-semibold text-[#0F172A] leading-relaxed">${m.explanationSummary}</p></div>
+          <div class="space-y-2.5">${m.reasons.map((r, idx) => `<div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3"><div class="flex items-center gap-2 mb-1"><span class="w-5 h-5 rounded-full bg-[#0F172A] text-white text-[10px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span><span class="text-xs font-bold text-[#0F172A]">${r.title}</span></div><p class="text-xs text-slate-600 leading-relaxed pl-7">${r.detail}</p></div>`).join('')}</div>
         </div>
-
-        <div class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
-          Коэффициенты букмекерских контор
-        </div>
-        <div class="border border-slate-200 rounded-2xl overflow-hidden mb-2">
-          <table class="w-full text-xs text-left">
-            <thead class="bg-[#0F172A] text-white">
-              <tr>
-                <th class="py-2.5 px-3 font-semibold">Букмекер</th>
-                <th class="py-2.5 px-3 text-center font-semibold">П1 (${m.prob.p1}%)</th>
-                <th class="py-2.5 px-3 text-center font-semibold">Х (${m.prob.x}%)</th>
-                <th class="py-2.5 px-3 text-center font-semibold">П2 (${m.prob.p2}%)</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              ${m.bookmakers.map(bk => `
-                <tr class="bg-white">
-                  <td class="py-2.5 px-3 font-bold text-[#0F172A]">${bk.name}</td>
-                  <td class="py-2.5 px-3 text-center font-semibold ${bk.p1 === m.bestOdds.p1.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.p1}</td>
-                  <td class="py-2.5 px-3 text-center font-semibold ${bk.x === m.bestOdds.x.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.x}</td>
-                  <td class="py-2.5 px-3 text-center font-semibold ${bk.p2 === m.bestOdds.p2.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.p2}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
+        <div class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Коэффициенты букмекерских контор</div>
+        <div class="border border-slate-200 rounded-2xl overflow-hidden mb-2"><table class="w-full text-xs text-left"><thead class="bg-[#0F172A] text-white"><tr><th class="py-2.5 px-3 font-semibold">Букмекер</th><th class="py-2.5 px-3 text-center font-semibold">П1 (${m.prob.p1}%)</th><th class="py-2.5 px-3 text-center font-semibold">Х (${m.prob.x}%)</th><th class="py-2.5 px-3 text-center font-semibold">П2 (${m.prob.p2}%)</th></tr></thead><tbody class="divide-y divide-slate-100">${m.bookmakers.map(bk => `<tr class="bg-white"><td class="py-2.5 px-3 font-bold text-[#0F172A]">${bk.name}</td><td class="py-2.5 px-3 text-center font-semibold ${bk.p1 === m.bestOdds.p1.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.p1}</td><td class="py-2.5 px-3 text-center font-semibold ${bk.x === m.bestOdds.x.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.x}</td><td class="py-2.5 px-3 text-center font-semibold ${bk.p2 === m.bestOdds.p2.val ? 'text-[#1E3A8A] bg-blue-50/70 font-extrabold' : 'text-slate-700'}">${bk.p2}</td></tr>`).join('')}</tbody></table></div>
       `;
-
       if (!silentRefresh) {
         document.getElementById('sheet-backdrop').classList.remove('opacity-0', 'pointer-events-none');
         document.getElementById('sheet-panel').classList.remove('translate-y-full');
@@ -1468,13 +1320,6 @@
       document.getElementById('sheet-panel').classList.add('translate-y-full');
     }
 
-    // Старт приложения и автообновление Live-данных каждые 1.5 минуты (90 секунд)
-    initUserAndPermissions();
-    loadMatchesFromFeed();
-    setInterval(() => {
-      loadMatchesFromFeed(true);
-    }, 90000);
-
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
@@ -1482,6 +1327,12 @@
       tg.setHeaderColor('#0F172A');
       tg.setBackgroundColor('#F1F5F9');
     }
+
+    initUserAndPermissions();
+    setTimeout(initUserAndPermissions, 300);
+
+    loadMatchesFromFeed();
+    setInterval(loadMatchesFromFeed, 90000);
   </script>
 </body>
 </html>
