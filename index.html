@@ -1073,23 +1073,64 @@
     function openPaymentModal() { document.getElementById('pay-modal').classList.remove('hidden'); }
     function closePaymentModal() { document.getElementById('pay-modal').classList.add('hidden'); }
 
-    function processStarsPayment() {
-      const tg = window.Telegram?.WebApp;
-      if (tg && tg.sendData) {
-        try {
-          tg.sendData(JSON.stringify({ action: 'buy_pro_stars', stars: SUBSCRIPTION_STARS_PRICE, currency: 'XTR', user_id: currentUser.id }));
-        } catch (e) {}
+    async function processStarsPayment() {
+  const tg = window.Telegram?.WebApp;
+
+  // 1. Создаём прямую ссылку на счёт через Bot API и открываем системное окно оплаты Stars поверх Mini App
+  if (!BOT_TOKEN_FOR_CHECK.includes('9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4')) {
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN_FOR_CHECK}/createInvoiceLink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Цифра Спорта PRO (30 дней)',
+          description: 'ИИ-проверка экспрессов, поиск слабых событий и рекомендации по замене.',
+          payload: `pro_30d_${currentUser.id}`,
+          provider_token: '',
+          currency: 'XTR',
+          prices: [{ label: 'Подписка PRO (1 мес)', amount: SUBSCRIPTION_STARS_PRICE }]
+        })
+      });
+      const data = await resp.json();
+
+      if (data.ok && data.result && tg && tg.openInvoice) {
+        closePaymentModal();
+        tg.openInvoice(data.result, function(status) {
+          if (status === 'paid') {
+            hasPaidSub = true;
+            localStorage.setItem('cs_pro_stars_active', 'true');
+            updateAccessUI();
+            if (tg.showAlert) {
+              tg.showAlert('✅ Оплата 499 ⭐ прошла успешно! PRO-доступ активирован на 30 дней.');
+            }
+          }
+        });
+        return;
       }
-      closePaymentModal();
-      if (tg && tg.showAlert) {
-        tg.showAlert(`Счёт на ${SUBSCRIPTION_STARS_PRICE} ⭐ отправлен в чат с ботом! Подтвердите оплату, и PRO-доступ откроется автоматически.`);
-      } else {
-        hasPaidSub = true;
-        localStorage.setItem('cs_pro_stars_active', 'true');
-        updateAccessUI();
-        alert(`✅ Тестовая оплата ${SUBSCRIPTION_STARS_PRICE} ⭐ прошла успешно!`);
-      }
+    } catch (e) {
+      console.error('Ошибка создания инвойса:', e);
     }
+  }
+
+  // 2. Резервный способ: отправка запроса в чат с ботом
+  if (tg && tg.sendData) {
+    try {
+      tg.sendData(JSON.stringify({
+        action: 'buy_pro_stars',
+        stars: SUBSCRIPTION_STARS_PRICE,
+        currency: 'XTR',
+        user_id: currentUser.id
+      }));
+      closePaymentModal();
+      if (tg.showAlert) {
+        tg.showAlert(`Счёт на ${SUBSCRIPTION_STARS_PRICE} ⭐ отправлен в чат с ботом!`);
+      }
+      return;
+    } catch (e) {}
+  }
+
+  alert('Чтобы оплатить подписку, напишите боту команду /pro в чате.');
+}
 
     function setAdminSimMode(mode) {
       if (!isOwner) return;
