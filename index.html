@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Цифра Спорта — Аналитика</title>
+  <title>Цифра Спорта — Аналитика и ИИ</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -30,13 +30,18 @@
           ЦС
         </div>
         <div>
-          <h1 class="font-bold text-base leading-tight tracking-tight">Цифра Спорта</h1>
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-bold text-base leading-tight tracking-tight">Цифра Спорта</h1>
+            <span id="role-badge" class="hidden text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-400 text-[#0F172A]">ADMIN</span>
+          </div>
           <p id="sync-status" class="text-[11px] text-slate-400">Автопоиск матчей • Синхронизация...</p>
         </div>
       </div>
-      <button onclick="loadMatchesFromFeed(true)" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-full flex items-center gap-1.5 active:scale-95 transition">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-[11px] font-medium text-slate-200">↻ Авто-линия</span>
+
+      <!-- Кнопка статуса подписки -->
+      <button id="header-sub-btn" onclick="switchTab('express')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+        <span class="text-xs">⭐</span>
+        <span id="header-sub-text" class="text-[11px] font-bold">PRO • 499 ⭐</span>
       </button>
     </div>
 
@@ -52,65 +57,230 @@
         🏒 Хоккей
       </button>
       <button data-filter="value" class="filter-btn bg-slate-800/80 text-slate-300 hover:text-white font-medium text-xs px-3.5 py-1.5 rounded-full shrink-0 transition">
-        🔥 Валуи (Value)
+        🔥 Валуи
       </button>
     </div>
   </header>
 
-  <!-- Секция: Главные матчи дня -->
-  <section class="mt-4">
-    <div class="px-4 flex items-center justify-between mb-2.5">
-      <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-[#1E3A8A]"></span>
-        Главные матчи дня
+  <!-- ==================== ВКЛАДКА 1: МАТЧИ И ЛИНИЯ ==================== -->
+  <div id="view-matches">
+    <section class="mt-4">
+      <div class="px-4 flex items-center justify-between mb-2.5">
+        <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#1E3A8A]"></span>
+          Главные матчи дня
+        </h2>
+        <span class="text-[11px] font-semibold text-[#1E3A8A]">Нажмите для объяснения →</span>
+      </div>
+      <div id="featured-carousel" class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1"></div>
+    </section>
+
+    <main class="px-4 mt-4">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+          Линия и шанс на победу
+        </h2>
+        <span id="matches-count" class="text-[11px] text-slate-400 font-medium">Загрузка...</span>
+      </div>
+      <div id="matches-list" class="space-y-3.5"></div>
+    </main>
+  </div>
+
+  <!-- ==================== ВКЛАДКА 2: ИИ-ПРОВЕРКА ЭКСПРЕССА (PRO 499 ⭐) ==================== -->
+  <div id="view-express" class="hidden px-4 mt-4 space-y-4">
+
+    <!-- Баннер подписки (499 звёзд) -->
+    <div id="paywall-card" class="bg-[#0F172A] text-white rounded-3xl p-5 shadow-lg border border-slate-800">
+      <div class="flex items-center justify-between mb-3">
+        <span class="bg-blue-600 text-white text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wide">
+          Тариф PRO
+        </span>
+        <div class="text-right flex items-center gap-1">
+          <span class="text-xl font-extrabold text-amber-400">499 ⭐</span>
+          <span class="text-xs text-slate-400">/ мес</span>
+        </div>
+      </div>
+
+      <h2 class="text-lg font-extrabold leading-snug mb-2">
+        Автоматическая проверка экспресса с помощью ИИ
       </h2>
-      <span class="text-[11px] font-semibold text-[#1E3A8A]">Нажмите для объяснения →</span>
+      <p class="text-xs text-slate-300 leading-relaxed mb-4">
+        Соберите ваш экспресс из матчей линии — нейросеть «Цифры Спорта» рассчитает реальную вероятность прохода, найдёт самое рискованное событие и подскажет, на что его лучше заменить.
+      </p>
+
+      <div class="space-y-2 mb-5 text-xs">
+        <div class="flex items-center gap-2 text-slate-200">
+          <span class="text-emerald-400 font-bold">✓</span>
+          <span>Поиск «слабого звена» с высокой маржой БК</span>
+        </div>
+        <div class="flex items-center gap-2 text-slate-200">
+          <span class="text-emerald-400 font-bold">✓</span>
+          <span>Рекомендации по замене или подстраховке исхода</span>
+        </div>
+        <div class="flex items-center gap-2 text-slate-200">
+          <span class="text-emerald-400 font-bold">✓</span>
+          <span>Безлимитное количество проверок на 30 дней</span>
+        </div>
+      </div>
+
+      <button onclick="openPaymentModal()" class="w-full bg-white text-[#0F172A] hover:bg-blue-50 font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition flex items-center justify-center gap-1.5">
+        <span>Оплатить подписку за 499 ⭐</span>
+      </button>
     </div>
 
-    <div id="featured-carousel" class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1"></div>
-  </section>
+    <!-- Рабочий инструмент ИИ-проверки экспресса -->
+    <div id="express-builder-box" class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-sm font-extrabold text-[#0F172A]">🤖 ИИ-Анализатор экспресса</h3>
+          <p class="text-[11px] text-slate-500">Выберите от 2 до 5 исходов для проверки</p>
+        </div>
+        <span id="express-access-badge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+          Демо-режим
+        </span>
+      </div>
 
-  <!-- Основная лента матчей -->
-  <main class="px-4 mt-4">
-    <div class="flex items-center justify-between mb-2.5">
-      <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-        Линия и шанс на победу
-      </h2>
-      <span id="matches-count" class="text-[11px] text-slate-400 font-medium">Загрузка...</span>
+      <div id="express-picks-list" class="space-y-2.5 mb-4"></div>
+
+      <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 mb-3 flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-500">Выбрано событий: <strong id="exp-count" class="text-[#0F172A]">0</strong></div>
+          <div class="text-xs font-bold text-[#1E3A8A] mt-0.5">Общий кэф: <span id="exp-total-odd">1.00</span></div>
+        </div>
+        <button onclick="clearExpress()" class="text-xs text-slate-400 hover:text-slate-600 font-semibold">
+          Очистить
+        </button>
+      </div>
+
+      <button onclick="runAiExpressCheck()" class="w-full bg-[#0F172A] text-white font-bold text-sm py-3.5 rounded-2xl shadow active:scale-[0.98] transition flex items-center justify-center gap-2">
+        <span>🧠</span>
+        <span>Проверить экспресс с помощью ИИ</span>
+      </button>
+
+      <div id="ai-express-result" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ==================== ВКЛАДКА 3: АДМИН-ПАНЕЛЬ ВЛАДЕЛЬЦА ==================== -->
+  <div id="view-admin" class="hidden px-4 mt-4 space-y-4">
+    <div class="bg-[#0F172A] text-white rounded-3xl p-5 shadow-md">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-extrabold uppercase tracking-wider text-amber-400">Панель владельца</span>
+        <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+          PRO Бесплатно • VIP
+        </span>
+      </div>
+      <h2 class="text-lg font-extrabold">Управление «Цифрой Спорта»</h2>
+      <p class="text-xs text-slate-400 mt-1">Ваш Telegram ID: <strong id="admin-my-id" class="text-white select-all">6851997342</strong></p>
+      <p class="text-xs text-slate-400 mt-0.5">Текущий тариф в боте: <strong class="text-amber-400">499 ⭐ / месяц</strong></p>
     </div>
 
-    <div id="matches-list" class="space-y-3.5"></div>
-  </main>
+    <!-- Переключатель режима просмотра -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+      <h3 class="text-sm font-extrabold text-[#0F172A] mb-1">Режим отображения приложения</h3>
+      <p class="text-xs text-slate-500 mb-3">По умолчанию у вас включён бесплатный VIP-доступ ко всем ИИ-функциям.</p>
 
-  <!-- Нижняя навигация -->
-  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 px-6 py-2.5 flex justify-between items-center text-[11px] font-medium text-slate-400 z-20">
-    <button onclick="setFilter('all')" class="flex flex-col items-center text-[#0F172A] font-bold">
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="setAdminSimMode('vip')" id="btn-mode-vip" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-[#0F172A] text-white">
+          👑 Владелец (PRO Бесплатно)
+        </button>
+        <button onclick="setAdminSimMode('free')" id="btn-mode-free" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">
+          👤 Глазами обычного юзера
+        </button>
+      </div>
+    </div>
+
+    <!-- Выдача бесплатного доступа -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+      <h3 class="text-sm font-extrabold text-[#0F172A] mb-1">Выдать бесплатный PRO-доступ</h3>
+      <p class="text-xs text-slate-500 mb-3">Введите Telegram ID пользователя, чтобы открыть ему ИИ-проверку экспрессов без оплаты 499 ⭐.</p>
+
+      <div class="flex gap-2 mb-3">
+        <input id="grant-user-id" type="number" placeholder="Например: 987654321" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#1E3A8A]">
+        <button onclick="grantFreePro()" class="bg-[#1E3A8A] text-white text-xs font-bold px-4 py-2 rounded-xl active:scale-95 transition">
+          Выдать
+        </button>
+      </div>
+
+      <div id="vip-users-list" class="space-y-1.5 text-xs"></div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-2">
+      <h3 class="text-sm font-extrabold text-[#0F172A] mb-2">Управление базой матчей</h3>
+      <button onclick="loadMatchesFromFeed(true); switchTab('matches')" class="w-full bg-blue-50 text-[#1E3A8A] font-bold text-xs py-3 rounded-xl border border-blue-200">
+        🔄 Принудительно обновить линию матчей
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== НИЖНЯЯ НАВИГАЦИЯ ==================== -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 px-5 py-2.5 flex justify-around items-center text-[11px] font-medium text-slate-400 z-20">
+    <button onclick="switchTab('matches')" id="nav-matches" class="flex flex-col items-center text-[#0F172A] font-bold">
       <span class="text-base mb-0.5">📊</span>
       Матчи
     </button>
-    <button onclick="setFilter('value')" class="flex flex-col items-center hover:text-[#0F172A]">
-      <span class="text-base mb-0.5">🔥</span>
-      Валуи
+    <button onclick="switchTab('express')" id="nav-express" class="flex flex-col items-center hover:text-[#0F172A] relative">
+      <span class="text-base mb-0.5">🤖</span>
+      <span>ИИ-Экспресс</span>
+      <span class="absolute -top-1 -right-2 bg-blue-600 text-white text-[8px] font-extrabold px-1 rounded">PRO</span>
     </button>
     <button onclick="if(matchesData.length) openSheet(matchesData[0])" class="flex flex-col items-center hover:text-[#0F172A]">
       <span class="text-base mb-0.5">🧠</span>
       Объяснения
     </button>
-    <button onclick="loadMatchesFromFeed(true)" class="flex flex-col items-center hover:text-[#0F172A]">
-      <span class="text-base mb-0.5">🔄</span>
-      Обновить
+    <button onclick="switchTab('admin')" id="nav-admin" class="hidden flex flex-col items-center hover:text-[#0F172A]">
+      <span class="text-base mb-0.5">👑</span>
+      Админка
     </button>
   </nav>
 
-  <!-- Модальное окно (Bottom Sheet) с объяснением шансов на победу -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ОБЪЯСНЕНИЕ МАТЧА ==================== -->
   <div id="sheet-backdrop" onclick="closeSheet()" class="sheet-backdrop fixed inset-0 bg-slate-900/60 z-30 opacity-0 pointer-events-none"></div>
   <div id="sheet-panel" class="sheet-panel fixed bottom-0 inset-x-0 bg-white rounded-t-3xl z-40 p-5 shadow-2xl translate-y-full max-h-[88vh] overflow-y-auto">
     <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
     <div id="sheet-content"></div>
   </div>
 
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ОПЛАТА 499 TELEGRAM STARS ==================== -->
+  <div id="pay-modal" class="hidden fixed inset-0 bg-slate-900/70 z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-extrabold px-3 py-1 rounded-full">
+          ⭐ Telegram Stars • 30 дней
+        </span>
+        <button onclick="closePaymentModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold text-sm">✕</button>
+      </div>
+
+      <h3 class="text-lg font-extrabold text-[#0F172A] mb-1">Цифра Спорта PRO</h3>
+      <p class="text-xs text-slate-500 mb-4">Мгновенная оплата звёздами Telegram внутри приложения. Доступ к ИИ-проверке экспрессов откроется сразу после подтверждения.</p>
+
+      <div class="bg-[#0F172A] text-white rounded-2xl p-4 mb-4 flex justify-between items-center">
+        <div>
+          <div class="text-[11px] text-slate-400">Стоимость подписки (1 мес)</div>
+          <div class="text-xs text-blue-300 font-semibold mt-0.5">Безлимитный ИИ-разбор</div>
+        </div>
+        <div class="text-2xl font-extrabold text-amber-400">499 ⭐</div>
+      </div>
+
+      <button onclick="processStarsPayment()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition">
+        <span>⭐</span>
+        <span>Оплатить 499 звёзд</span>
+      </button>
+
+      <p class="text-[10px] text-center text-slate-400 mt-2.5">
+        Оплата проходит через официальный платёжный шлюз Telegram Stars.
+      </p>
+    </div>
+  </div>
+
   <script>
-    // Резервный набор данных (сработает мгновенно, пока matches.json ещё не подключён)
+    // =========================================================================
+    // НАСТРОЙКИ ВЛАДЕЛЬЦА И ТАРИФА
+    // =========================================================================
+    const ADMIN_TELEGRAM_IDS = [6851997342];
+    const SUBSCRIPTION_STARS_PRICE = 499;
+
     const fallbackMatches = [
       {
         id: 'ger-ned',
@@ -139,18 +309,9 @@
         ],
         explanationSummary: 'У сборной Германии почти вдвое выше шанс на победу (50% против 27% у Нидерландов) за счёт домашнего поля и превосходства в создании моментов (xG).',
         reasons: [
-          {
-            title: 'Фактор домашнего поля в Берлине',
-            detail: 'Германия выиграла 7 из 9 последних домашних официальных матчей, забивая в среднем 2.4 мяча за игру.'
-          },
-          {
-            title: 'Потери в обороне гостей',
-            detail: 'Нидерланды пропускали минимум один гол в 6 последних выездных встречах против команд из топ-10 рейтинга ФИФА.'
-          },
-          {
-            title: 'Прогруз линии букмекеров',
-            detail: 'За последние 12 часов коэффициент на победу Германии снизился с 2.05 до 1.87–1.91 на фоне высокого объёма ставок.'
-          }
+          { title: 'Фактор домашнего поля в Берлине', detail: 'Германия выиграла 7 из 9 последних домашних официальных матчей, забивая в среднем 2.4 мяча за игру.' },
+          { title: 'Потери в обороне гостей', detail: 'Нидерланды пропускали минимум один гол в 6 последних выездных встречах против команд из топ-10 рейтинга ФИФА.' },
+          { title: 'Прогруз линии букмекеров', detail: 'За последние 12 часов коэффициент на победу Германии снизился с 2.05 до 1.87–1.91.' }
         ]
       },
       {
@@ -180,18 +341,9 @@
         ],
         explanationSummary: 'Швейцария имеет 53% шансов на успех благодаря длительной беспроигрышной серии дома и слабой выездной статистике шотландцев.',
         reasons: [
-          {
-            title: 'Стабильность хозяев в отборе и Лиге наций',
-            detail: 'Швейцария не проигрывает на своём поле в официальных турнирах более 2 лет (11 матчей без поражений).'
-          },
-          {
-            title: 'Проблемы Шотландии в атаке на выезде',
-            detail: 'В 5 последних гостевых играх шотландцы наносили в среднем всего 2.8 удара в створ ворот.'
-          },
-          {
-            title: 'Контроль темпа и владение',
-            detail: 'Модель прогнозирует 61% владения мячом за Швейцарией, что минимизирует контратаки соперника.'
-          }
+          { title: 'Стабильность хозяев дома', detail: 'Швейцария не проигрывает на своём поле в официальных турнирах более 2 лет (11 матчей без поражений).' },
+          { title: 'Проблемы Шотландии в атаке на выезде', detail: 'В 5 последних гостевых играх шотландцы наносили в среднем всего 2.8 удара в створ ворот.' },
+          { title: 'Контроль темпа и владение', detail: 'Модель прогнозирует 61% владения мячом за Швейцарией, что минимизирует контратаки соперника.' }
         ]
       },
       {
@@ -221,18 +373,9 @@
         ],
         explanationSummary: 'ЦСКА — безоговорочный фаворит (63% на победу в основное время) из-за разницы в классе составов и тяжёлой выездной серии хабаровчан.',
         reasons: [
-          {
-            title: 'Сложный перелёт и акклиматизация Амура',
-            detail: 'Для «Амура» это четвёртый выездной матч подряд на Западе; в 3-х периодах команда проседает по физике.'
-          },
-          {
-            title: 'Надёжность обороны армейцев',
-            detail: 'ЦСКА пропускает в среднем 1.8 шайбы за домашний матч и входит в топ-3 лиги по игре в меньшинстве (86.4%).'
-          },
-          {
-            title: 'Преимущество в очных встречах',
-            detail: 'В Москве ЦСКА выиграл 8 из 9 последних очных матчей против «Амура» в основное время.'
-          }
+          { title: 'Сложный перелёт Амура', detail: 'Для «Амура» это четвёртый выездной матч подряд на Западе; в 3-х периодах команда проседает по физике.' },
+          { title: 'Надёжность обороны армейцев', detail: 'ЦСКА пропускает в среднем 1.8 шайбы за домашний матч и входит в топ-3 лиги по игре в меньшинстве.' },
+          { title: 'Преимущество в очных встречах', detail: 'В Москве ЦСКА выиграл 8 из 9 последних очных матчей против «Амура» в основное время.' }
         ]
       },
       {
@@ -262,47 +405,330 @@
         ],
         explanationSummary: 'Небольшой перевес на стороне «Рейнджерс» (42% против 36%) за счёт домашнего льда и реализации большинства, но «Монреаль» близок по форме.',
         reasons: [
-          {
-            title: 'Сильная игра Нью-Йорка дома',
-            detail: '«Рейнджерс» выиграли 8 из 10 последних домашних матчей в «Мэдисон Сквер Гарден».'
-          },
-          {
-            title: 'Эффективность спецбригад большинства',
-            detail: 'Реализация лишнего у хозяев — 26.8% (4-е место в НХЛ), тогда как «Монреаль» часто удаляется в гостях.'
-          },
-          {
-            title: 'Почему шансы почти равны',
-            detail: '«Монреаль» набирал очки в 9 из 11 последних игр, поэтому вероятность ничьей (22%) и победы гостей (36%) остаётся высокой.'
-          }
+          { title: 'Сильная игра Нью-Йорка дома', detail: '«Рейнджерс» выиграли 8 из 10 последних домашних матчей в «Мэдисон Сквер Гарден».' },
+          { title: 'Эффективность большинства', detail: 'Реализация лишнего у хозяев — 26.8% (4-е место в НХЛ), тогда как «Монреаль» часто удаляется в гостях.' },
+          { title: 'Почему шансы почти равны', detail: '«Монреаль» набирал очки в 9 из 11 последних игр, поэтому вероятность ничьей (22%) остаётся высокой.' }
         ]
       }
     ];
 
     let matchesData = [];
     let currentFilter = 'all';
+    let selectedExpress = {};
 
-    // Автоматическая загрузка свежих матчей из matches.json
+    let currentUser = { id: null, name: 'Гость' };
+    let isOwner = false;
+    let adminForceFreeView = false;
+    let vipList = JSON.parse(localStorage.getItem('cs_vip_users') || '[]');
+    let hasPaidSub = localStorage.getItem('cs_pro_stars_active') === 'true';
+
+    function initUserAndPermissions() {
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser && tgUser.id) {
+        currentUser.id = Number(tgUser.id);
+        currentUser.name = tgUser.first_name || 'Пользователь';
+      } else {
+        currentUser.id = 6851997342;
+        currentUser.name = 'Владелец';
+      }
+
+      isOwner = ADMIN_TELEGRAM_IDS.includes(currentUser.id);
+      document.getElementById('admin-my-id').textContent = currentUser.id;
+
+      if (isOwner) {
+        document.getElementById('role-badge').classList.remove('hidden');
+        document.getElementById('nav-admin').classList.remove('hidden');
+      }
+
+      updateAccessUI();
+      renderVipUsersList();
+    }
+
+    function hasProAccess() {
+      if (isOwner && !adminForceFreeView) return true;
+      if (vipList.includes(currentUser.id)) return true;
+      return hasPaidSub;
+    }
+
+    function updateAccessUI() {
+      const pro = hasProAccess();
+      const paywall = document.getElementById('paywall-card');
+      const headerBtn = document.getElementById('header-sub-btn');
+      const headerText = document.getElementById('header-sub-text');
+      const expBadge = document.getElementById('express-access-badge');
+
+      if (pro) {
+        paywall.classList.add('hidden');
+        headerBtn.className = 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition';
+        headerText.textContent = (isOwner && !adminForceFreeView) ? 'OWNER • PRO' : 'PRO Активен';
+        expBadge.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+        expBadge.textContent = (isOwner && !adminForceFreeView) ? 'VIP Бесплатно' : 'Подписка 499 ⭐ активна';
+      } else {
+        paywall.classList.remove('hidden');
+        headerBtn.className = 'bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm active:scale-95 transition';
+        headerText.textContent = 'PRO • 499 ⭐';
+        expBadge.className = 'text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        expBadge.textContent = 'Требуется PRO (499 ⭐)';
+      }
+    }
+
+    function switchTab(tab) {
+      document.getElementById('view-matches').classList.add('hidden');
+      document.getElementById('view-express').classList.add('hidden');
+      document.getElementById('view-admin').classList.add('hidden');
+      document.getElementById('filter-bar').classList.toggle('hidden', tab !== 'matches');
+
+      ['nav-matches', 'nav-express', 'nav-admin'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = 'flex flex-col items-center text-slate-400 font-medium relative';
+      });
+
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tab}`);
+      if (activeNav) activeNav.className = 'flex flex-col items-center text-[#0F172A] font-bold relative';
+
+      if (tab === 'express') renderExpressBuilder();
+    }
+
+    // ==================== КОНСТРУКТОР И ИИ-ПРОВЕРКА ЭКСПРЕССА ====================
+    function renderExpressBuilder() {
+      const list = document.getElementById('express-picks-list');
+      list.innerHTML = matchesData.map(m => {
+        const cur = selectedExpress[m.id]?.side;
+        return `
+          <div class="border border-slate-200 rounded-2xl p-3 bg-slate-50/50">
+            <div class="flex justify-between items-center text-xs font-bold text-[#0F172A] mb-2">
+              <span>${m.flag1} ${m.team1} — ${m.team2} ${m.flag2}</span>
+              <span class="text-[10px] font-medium text-slate-400">${m.league.split('•')[0]}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              ${renderPickBtn(m, 'p1', `П1 (${m.prob.p1}%)`, m.bestOdds.p1.val, cur === 'p1')}
+              ${renderPickBtn(m, 'x',  `Х (${m.prob.x}%)`,  m.bestOdds.x.val,  cur === 'x')}
+              ${renderPickBtn(m, 'p2', `П2 (${m.prob.p2}%)`, m.bestOdds.p2.val, cur === 'p2')}
+            </div>
+          </div>
+        `;
+      }).join('');
+      updateExpressSummary();
+    }
+
+    function renderPickBtn(m, side, label, odd, isSelected) {
+      return `
+        <button onclick="toggleExpressPick('${m.id}', '${side}')"
+          class="py-2 px-1.5 rounded-xl border text-center transition ${isSelected ? 'bg-[#0F172A] text-white border-[#0F172A] shadow-sm' : 'bg-white text-[#0F172A] border-slate-200 hover:border-blue-400'}">
+          <div class="text-[10px] ${isSelected ? 'text-blue-300' : 'text-slate-500'} font-medium">${label}</div>
+          <div class="text-xs font-extrabold mt-0.5">${odd}</div>
+        </button>
+      `;
+    }
+
+    function toggleExpressPick(matchId, side) {
+      const m = matchesData.find(item => item.id === matchId);
+      if (!m) return;
+
+      if (selectedExpress[matchId]?.side === side) {
+        delete selectedExpress[matchId];
+      } else {
+        const sideNames = { p1: `Победа ${m.team1} (П1)`, x: 'Ничья (Х)', p2: `Победа ${m.team2} (П2)` };
+        selectedExpress[matchId] = {
+          side,
+          label: sideNames[side],
+          odd: parseFloat(m.bestOdds[side].val),
+          prob: m.prob[side],
+          match: m
+        };
+      }
+      document.getElementById('ai-express-result').classList.add('hidden');
+      renderExpressBuilder();
+    }
+
+    function clearExpress() {
+      selectedExpress = {};
+      document.getElementById('ai-express-result').classList.add('hidden');
+      renderExpressBuilder();
+    }
+
+    function updateExpressSummary() {
+      const picks = Object.values(selectedExpress);
+      const totalOdd = picks.reduce((acc, p) => acc * p.odd, 1);
+      document.getElementById('exp-count').textContent = picks.length;
+      document.getElementById('exp-total-odd').textContent = picks.length ? totalOdd.toFixed(2) : '1.00';
+    }
+
+    function runAiExpressCheck() {
+      if (!hasProAccess()) {
+        openPaymentModal();
+        return;
+      }
+
+      const picks = Object.values(selectedExpress);
+      const resBox = document.getElementById('ai-express-result');
+
+      if (picks.length < 2) {
+        resBox.classList.remove('hidden');
+        resBox.innerHTML = `
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-800 font-semibold">
+            ⚠️ Выберите минимум 2 события в конструкторе выше, чтобы ИИ разобрал экспресс.
+          </div>
+        `;
+        return;
+      }
+
+      const combinedProb = Math.round(picks.reduce((acc, p) => acc * (p.prob / 100), 1) * 1000) / 10;
+      const totalOdd = picks.reduce((acc, p) => acc * p.odd, 1).toFixed(2);
+      const weakest = [...picks].sort((a, b) => a.prob - b.prob)[0];
+      const m = weakest.match;
+
+      let adviceText = '';
+      let replacementBadge = '';
+
+      if (weakest.side === 'x') {
+        const saferTeam = m.prob.p1 >= m.prob.p2 ? `${m.team1} (1Х)` : `${m.team2} (Х2)`;
+        const saferProb = m.prob.p1 >= m.prob.p2 ? (m.prob.p1 + m.prob.x) : (m.prob.p2 + m.prob.x);
+        replacementBadge = `Заменить на: ${saferTeam}`;
+        adviceText = `Чистая ничья в матче «${m.team1} — ${m.team2}» имеет вероятность всего ${weakest.prob}% и резко режет проходимость всего купона. ИИ рекомендует заменить исход на двойной шанс <strong>${saferTeam}</strong> — вероятность прохода вырастет до <strong>${saferProb}%</strong>.`;
+      } else if (weakest.prob < 48) {
+        const doubleChance = weakest.side === 'p1' ? `1Х (${m.team1} не проиграет)` : `Х2 (${m.team2} не проиграет)`;
+        const newProb = weakest.prob + m.prob.x;
+        replacementBadge = `Подстраховка: ${doubleChance}`;
+        adviceText = `Исход «${weakest.label}» в матче «${m.team1} — ${m.team2}» — главное слабое звено экспресса (шанс всего ${weakest.prob}%, высокий риск ничьей ${m.prob.x}%). Лучше заменить чистую победу на <strong>${doubleChance}</strong>: вероятность этого события поднимется до <strong>${newProb}%</strong>.`;
+      } else {
+        replacementBadge = 'Экспресс сбалансирован';
+        adviceText = `Все выбранные события имеют математически обоснованный перевес. Самый осторожный пункт — «${weakest.label}» (${weakest.prob}%), при желании снизить дисперсию его можно подстраховать форой (0).`;
+      }
+
+      const riskLabel = combinedProb >= 25 ? 'Умеренный риск' : (combinedProb >= 14 ? 'Повышенный риск' : 'Высокий риск');
+      const riskColor = combinedProb >= 25 ? 'text-emerald-600 bg-emerald-50' : (combinedProb >= 14 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50');
+
+      resBox.classList.remove('hidden');
+      resBox.innerHTML = `
+        <div class="bg-[#0F172A] text-white rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold text-blue-300 uppercase">Вердикт ИИ «Цифра Спорта»</span>
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${riskColor}">${riskLabel}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="bg-slate-800/90 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">Общий кэф БК</div>
+              <div class="text-base font-extrabold text-white">${totalOdd}</div>
+            </div>
+            <div class="bg-slate-800/90 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">Реальный шанс захода</div>
+              <div class="text-base font-extrabold text-blue-400">${combinedProb}%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-blue-50/80 border border-blue-200 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-extrabold text-[#0F172A]">💡 Рекомендация по улучшению</span>
+            <span class="text-[10px] font-bold bg-[#1E3A8A] text-white px-2 py-0.5 rounded-md">${replacementBadge}</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed">${adviceText}</p>
+        </div>
+      `;
+    }
+
+    // ==================== ОПЛАТА 499 TELEGRAM STARS ====================
+    function openPaymentModal() {
+      document.getElementById('pay-modal').classList.remove('hidden');
+    }
+
+    function closePaymentModal() {
+      document.getElementById('pay-modal').classList.add('hidden');
+    }
+
+    function processStarsPayment() {
+      const tg = window.Telegram?.WebApp;
+
+      // Отправляем запрос боту на выставление счёта в 499 Telegram Stars
+      if (tg && tg.sendData) {
+        try {
+          tg.sendData(JSON.stringify({
+            action: 'buy_pro_stars',
+            stars: SUBSCRIPTION_STARS_PRICE,
+            currency: 'XTR',
+            user_id: currentUser.id
+          }));
+        } catch (e) {}
+      }
+
+      // Если бот прислал ссылку на инвойс через параметр или API, открываем нативное окно оплаты Stars
+      closePaymentModal();
+      if (tg && tg.showAlert) {
+        tg.showAlert(`Счёт на ${SUBSCRIPTION_STARS_PRICE} ⭐ отправлен в чат с ботом! Подтвердите оплату в 1 клик, и PRO-доступ откроется автоматически.`);
+      } else {
+        // Fallback для локального теста
+        hasPaidSub = true;
+        localStorage.setItem('cs_pro_stars_active', 'true');
+        updateAccessUI();
+        alert(`✅ Тестовая оплата ${SUBSCRIPTION_STARS_PRICE} ⭐ прошла успешно! PRO-доступ активирован.`);
+      }
+    }
+
+    // ==================== ФУНКЦИИ АДМИН-ПАНЕЛИ ====================
+    function setAdminSimMode(mode) {
+      adminForceFreeView = (mode === 'free');
+      document.getElementById('btn-mode-vip').className = !adminForceFreeView
+        ? 'py-2.5 px-3 rounded-xl text-xs font-bold bg-[#0F172A] text-white'
+        : 'py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 text-slate-700';
+      document.getElementById('btn-mode-free').className = adminForceFreeView
+        ? 'py-2.5 px-3 rounded-xl text-xs font-bold bg-[#0F172A] text-white'
+        : 'py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 text-slate-700';
+      updateAccessUI();
+    }
+
+    function grantFreePro() {
+      const input = document.getElementById('grant-user-id');
+      const id = Number(input.value.trim());
+      if (!id) return;
+      if (!vipList.includes(id)) {
+        vipList.push(id);
+        localStorage.setItem('cs_vip_users', JSON.stringify(vipList));
+      }
+      input.value = '';
+      renderVipUsersList();
+    }
+
+    function revokeFreePro(id) {
+      vipList = vipList.filter(item => item !== id);
+      localStorage.setItem('cs_vip_users', JSON.stringify(vipList));
+      renderVipUsersList();
+    }
+
+    function renderVipUsersList() {
+      const box = document.getElementById('vip-users-list');
+      if (!vipList.length) {
+        box.innerHTML = '<div class="text-slate-400">Дополнительных VIP-пользователей пока нет.</div>';
+        return;
+      }
+      box.innerHTML = vipList.map(id => `
+        <div class="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+          <span class="font-bold text-[#0F172A]">ID: ${id} (PRO Бесплатно)</span>
+          <button onclick="revokeFreePro(${id})" class="text-rose-600 font-bold">Удалить</button>
+        </div>
+      `).join('');
+    }
+
+    // ==================== ЗАГРУЗКА И ОТРИСОВКА МАТЧЕЙ ====================
     async function loadMatchesFromFeed(manual = false) {
       const statusEl = document.getElementById('sync-status');
       if (manual) statusEl.textContent = 'Обновление линии БК...';
 
       try {
-        // Добавляем timestamp, чтобы Telegram не отдавал старый кэш
         const response = await fetch(`./matches.json?t=${Date.now()}`);
-        if (!response.ok) throw new Error('JSON feed not found yet');
-
+        if (!response.ok) throw new Error('No feed');
         const data = await response.json();
         if (data.matches && data.matches.length > 0) {
           matchesData = data.matches;
           statusEl.textContent = `Обновлено: ${data.updated_at || 'сегодня'}`;
         } else {
-          throw new Error('Empty feed');
+          throw new Error('Empty');
         }
       } catch (err) {
-        // Используем встроенные матчи, если внешний JSON ещё не сгенерирован
         matchesData = fallbackMatches;
         const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-        statusEl.textContent = `${today} • Автопоиск активен`;
+        statusEl.textContent = `${today} • Линия и ИИ-аналитика`;
       }
 
       renderFeatured();
@@ -319,7 +745,6 @@
             <span class="font-semibold text-blue-300 truncate max-w-[165px]">${m.league}</span>
             <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-200 font-medium">${m.time.includes(', ') ? m.time.split(', ')[1] : m.time}</span>
           </div>
-
           <div class="flex items-center justify-between mb-2.5">
             <div class="flex items-center gap-1.5 truncate max-w-[115px]">
               <span class="text-base">${m.flag1}</span>
@@ -331,25 +756,10 @@
               <span class="text-base">${m.flag2}</span>
             </div>
           </div>
-
           <div class="bg-blue-950/90 border border-blue-800/70 rounded-xl px-2.5 py-1.5 mb-2.5 flex items-center justify-between">
             <span class="text-[10px] text-blue-200 font-medium">Шанс на победу:</span>
             <span class="text-xs font-extrabold text-white truncate max-w-[140px]">${m.favorite.team} — ${m.favorite.chance}%</span>
           </div>
-
-          <div class="mb-2.5">
-            <div class="flex justify-between text-[10px] font-bold mb-1 text-slate-300">
-              <span class="text-blue-400">П1 ${m.prob.p1}%</span>
-              <span>Х ${m.prob.x}%</span>
-              <span>П2 ${m.prob.p2}%</span>
-            </div>
-            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex gap-0.5">
-              <div class="bg-blue-500 h-full" style="width: ${m.prob.p1}%"></div>
-              <div class="bg-slate-500 h-full" style="width: ${m.prob.x}%"></div>
-              <div class="bg-slate-300 h-full" style="width: ${m.prob.p2}%"></div>
-            </div>
-          </div>
-
           <div class="grid grid-cols-3 gap-1.5 text-center pt-1">
             <div class="bg-slate-800/90 rounded-lg py-1">
               <span class="text-[9px] text-slate-400 block">П1</span>
@@ -444,20 +854,16 @@
       `).join('');
     }
 
-    function setFilter(filter) {
-      currentFilter = filter;
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        if (btn.dataset.filter === filter) {
-          btn.className = 'filter-btn bg-white text-[#0F172A] font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition';
-        } else {
-          btn.className = 'filter-btn bg-slate-800/80 text-slate-300 hover:text-white font-medium text-xs px-3.5 py-1.5 rounded-full shrink-0 transition';
-        }
-      });
-      renderMatches();
-    }
-
     document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+      btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.className = (b.dataset.filter === currentFilter)
+            ? 'filter-btn bg-white text-[#0F172A] font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0 shadow-sm transition'
+            : 'filter-btn bg-slate-800/80 text-slate-300 hover:text-white font-medium text-xs px-3.5 py-1.5 rounded-full shrink-0 transition';
+        });
+        renderMatches();
+      });
     });
 
     function openSheetById(id) {
@@ -484,9 +890,7 @@
               Шанс ${m.favorite.chance}%
             </span>
           </div>
-          <div class="text-base font-extrabold text-white mb-2">
-            ${m.favorite.team} (${m.favorite.side})
-          </div>
+          <div class="text-base font-extrabold text-white mb-2">${m.favorite.team} (${m.favorite.side})</div>
           <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex gap-0.5">
             <div class="bg-blue-500 h-full" style="width: ${m.prob.p1}%"></div>
             <div class="bg-slate-500 h-full" style="width: ${m.prob.x}%"></div>
@@ -504,20 +908,14 @@
             <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#1E3A8A] flex items-center justify-center text-xs font-extrabold">📋</span>
             <h4 class="text-sm font-extrabold text-[#0F172A]">Объяснение: почему выше шанс на победу</h4>
           </div>
-
           <div class="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3.5 mb-3">
-            <p class="text-xs font-semibold text-[#0F172A] leading-relaxed">
-              ${m.explanationSummary}
-            </p>
+            <p class="text-xs font-semibold text-[#0F172A] leading-relaxed">${m.explanationSummary}</p>
           </div>
-
           <div class="space-y-2.5">
             ${m.reasons.map((r, idx) => `
               <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="w-5 h-5 rounded-full bg-[#0F172A] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                    ${idx + 1}
-                  </span>
+                  <span class="w-5 h-5 rounded-full bg-[#0F172A] text-white text-[10px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
                   <span class="text-xs font-bold text-[#0F172A]">${r.title}</span>
                 </div>
                 <p class="text-xs text-slate-600 leading-relaxed pl-7">${r.detail}</p>
@@ -562,7 +960,7 @@
       document.getElementById('sheet-panel').classList.add('translate-y-full');
     }
 
-    // Запуск автозагрузки при открытии приложения
+    initUserAndPermissions();
     loadMatchesFromFeed();
 
     if (window.Telegram && window.Telegram.WebApp) {
