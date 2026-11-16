@@ -749,9 +749,6 @@
     // =========================================================================
     // ПРАВА ДОСТУПА (СТРОГО ТОЛЬКО ДЛЯ ID 6851997342) И ПРОВЕРКА ПОДПИСКИ
     // =========================================================================
-    // Временный сброс старого тестового флага (после одного открытия можно удалить)
-localStorage.removeItem('cs_pro_stars_active');
-hasPaidSub = false;
     function initUserAndPermissions() {
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
       if (tgUser && tgUser.id) {
