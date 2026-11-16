@@ -23,30 +23,6 @@
 </head>
 <body class="pb-24">
 
-  <!-- ==================== ЭКРАН ОБЯЗАТЕЛЬНОЙ ПОДПИСКИ НА КАНАЛ ==================== -->
-  <div id="sub-gate-modal" class="hidden fixed inset-0 bg-[#0F172A] text-white z-50 flex flex-col items-center justify-center p-6 text-center">
-    <div class="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center font-extrabold text-2xl mb-4 shadow-lg">
-      ЦС
-    </div>
-    <h2 class="text-xl font-extrabold mb-2">Подпишитесь на канал</h2>
-    <p class="text-xs text-slate-300 leading-relaxed max-w-xs mb-6">
-      Доступ к бесплатной аналитике матчей, Live-счёту и расчёту шансов открыт только подписчикам нашего официального Telegram-канала <strong>@DigitSportLive</strong>.
-    </p>
-    <div class="w-full max-w-xs space-y-3">
-      <a id="gate-channel-link" href="https://t.me/DigitSportLive" target="_blank"
-         class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-md transition">
-        📢 Подписаться на @DigitSportLive
-      </a>
-      <button onclick="verifyChannelSubscription()" id="gate-check-btn"
-              class="w-full bg-white text-[#0F172A] font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition">
-        ✅ Я подписался (Проверить)
-      </button>
-    </div>
-    <p id="gate-error-msg" class="hidden text-xs text-rose-400 font-semibold mt-4">
-      ❌ Подписка не найдена. Подпишитесь на @DigitSportLive и нажмите «Проверить» ещё раз.
-    </p>
-  </div>
-
   <!-- Шапка приложения -->
   <header class="bg-[#0F172A] text-white pt-4 pb-5 px-4 rounded-b-3xl shadow-md sticky top-0 z-20">
     <div class="flex items-center justify-between mb-4">
@@ -149,7 +125,7 @@
         </div>
       </div>
 
-      <button id="main-pay-btn" onclick="" class="w-full bg-white text-[#0F172A] hover:bg-blue-50 font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition flex items-center justify-center gap-1.5">
+      <button id="main-pay-btn" onclick="instantPayStars()" class="w-full bg-white text-[#0F172A] hover:bg-blue-50 font-extrabold text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition flex items-center justify-center gap-1.5">
         <span>⭐ Оплатить подписку за 499 ⭐</span>
       </button>
     </div>
@@ -266,14 +242,11 @@
 
   <script>
     // =========================================================================
-    // НАСТРОЙКИ ВЛАДЕЛЬЦА, ТАРИФА И ОБЯЗАТЕЛЬНОЙ ПОДПИСКИ НА КАНАЛ
+    // НАСТРОЙКИ ВЛАДЕЛЬЦА, ТАРИФА И БОТА
     // =========================================================================
     const ADMIN_TELEGRAM_IDS = [6851997342];
     const SUBSCRIPTION_STARS_PRICE = 499;
-
-    const BOT_TOKEN_FOR_CHECK = '9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4';
-    const REQUIRED_CHANNEL = '@DigitSportLive';
-    const REQUIRED_CHANNEL_URL = 'https://t.me/DigitSportLive';
+    const BOT_PAY_LINK = 'https://t.me/SportDigitBot?start=pay';
 
     const fallbackMatches = [
       {
@@ -716,13 +689,18 @@
     let isOwner = false;
     let adminForceFreeView = false;
     let vipList = JSON.parse(localStorage.getItem('cs_vip_users') || '[]');
-    let hasPaidSub = localStorage.getItem('cs_pro_stars_active') === 'true';
-    let preloadedInvoiceUrl = null;
+    let hasPaidSub = false;
 
     // =========================================================================
-    // ПРАВА ДОСТУПА (СТРОГО ТОЛЬКО ДЛЯ ID 6851997342) И ПРОВЕРКА ПОДПИСКИ
+    // ПРАВА ДОСТУПА (СТРОГО ТОЛЬКО ДЛЯ ID 6851997342)
     // =========================================================================
     function initUserAndPermissions() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('pro') === '1') {
+        localStorage.setItem('cs_pro_stars_active', 'true');
+      }
+      hasPaidSub = localStorage.getItem('cs_pro_stars_active') === 'true';
+
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
       if (tgUser && tgUser.id) {
         currentUser.id = Number(tgUser.id);
@@ -747,45 +725,6 @@
 
       updateAccessUI();
       renderVipUsersList();
-      verifyChannelSubscription();
-    }
-
-    async function verifyChannelSubscription() {
-      const gate = document.getElementById('sub-gate-modal');
-      const errMsg = document.getElementById('gate-error-msg');
-      const btn = document.getElementById('gate-check-btn');
-      document.getElementById('gate-channel-link').href = REQUIRED_CHANNEL_URL;
-
-      if (isOwner) {
-        gate.classList.add('hidden');
-        return;
-      }
-
-      if (!currentUser.id || BOT_TOKEN_FOR_CHECK.includes('9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4')) {
-        gate.classList.add('hidden');
-        return;
-      }
-
-      btn.textContent = '⏳ Проверяем подписку...';
-      errMsg.classList.add('hidden');
-
-      try {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN_FOR_CHECK}/getChatMember?chat_id=${encodeURIComponent(REQUIRED_CHANNEL)}&user_id=${currentUser.id}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const status = data?.result?.status;
-
-        if (data.ok && ['member', 'administrator', 'creator'].includes(status)) {
-          gate.classList.add('hidden');
-        } else {
-          gate.classList.remove('hidden');
-          errMsg.classList.remove('hidden');
-        }
-      } catch (e) {
-        gate.classList.remove('hidden');
-      } finally {
-        btn.textContent = '✅ Я подписался (Проверить)';
-      }
     }
 
     function hasProAccess() {
@@ -817,91 +756,18 @@
     }
 
     // =========================================================================
-    // МГНОВЕННАЯ ОПЛАТА 499 TELEGRAM STARS В ОДИН КЛИК
+    // ОПЛАТА 499 STARS В ОДИН КЛИК ЧЕРЕЗ БОТА @SportDigitBot
     // =========================================================================
-    function preloadStarsInvoice() {}
-
-function instantPayStars() {
-  const tg = window.Telegram?.WebApp;
-  const payLink = 'https://t.me/SportDigitBot?start=pay';
-
-  if (tg && typeof tg.openTelegramLink === 'function') {
-    tg.openTelegramLink(payLink);
-    setTimeout(() => {
-      if (tg.close) tg.close();
-    }, 300);
-  } else {
-    window.open(payLink, '_blank');
-  }
-}
-          body: JSON.stringify({
-            title: 'Цифра Спорта PRO (30 дней)',
-            description: 'ИИ-проверка экспрессов, поиск слабых событий и рекомендации по замене.',
-            payload: `pro_30d_${currentUser.id || 'guest'}`,
-            provider_token: '',
-            currency: 'XTR',
-            prices: [{ label: 'Подписка PRO (1 мес)', amount: SUBSCRIPTION_STARS_PRICE }]
-          })
-        });
-        const data = await resp.json();
-        if (data.ok && data.result) {
-          preloadedInvoiceUrl = data.result;
-        }
-      } catch (e) {
-        console.error('Ошибка предзагрузки счёта:', e);
-      }
-    }
-
-    function preloadStarsInvoice() {
-      // Генерация счёта перенесена на сторону Python-бота (@SportDigitBot?start=pay)
-    }
-
     function instantPayStars() {
       const tg = window.Telegram?.WebApp;
-      const payLink = 'https://t.me/SportDigitBot?start=pay';
 
       if (tg && typeof tg.openTelegramLink === 'function') {
-        tg.openTelegramLink(payLink);
+        tg.openTelegramLink(BOT_PAY_LINK);
         setTimeout(() => {
           if (tg.close) tg.close();
         }, 300);
       } else {
-        window.open(payLink, '_blank');
-      }
-    }
-
-      if (BOT_TOKEN_FOR_CHECK.includes('9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1etap4')) {
-        alert('Впишите токен бота в переменную BOT_TOKEN_FOR_CHECK в index.html!');
-        return;
-      }
-
-      if (!preloadedInvoiceUrl) {
-        if (btn) btn.textContent = '⏳ Открываем счёт...';
-        await preloadStarsInvoice();
-        if (btn) btn.textContent = '⭐ Оплатить подписку за 499 ⭐';
-      }
-
-      if (!preloadedInvoiceUrl) {
-        alert('Не удалось получить ссылку на оплату от Telegram. Проверьте токен бота и интернет.');
-        return;
-      }
-
-      if (tg && typeof tg.openInvoice === 'function') {
-        tg.openInvoice(preloadedInvoiceUrl, function(status) {
-          preloadedInvoiceUrl = null;
-          preloadStarsInvoice();
-
-          if (status === 'paid') {
-            hasPaidSub = true;
-            localStorage.setItem('cs_pro_stars_active', 'true');
-            updateAccessUI();
-            if (tg.showAlert) {
-              tg.showAlert('✅ Оплата 499 ⭐ прошла успешно! Доступ к ИИ-Анализатору открыт.');
-            }
-          }
-        });
-      } else {
-        window.open(preloadedInvoiceUrl, '_blank');
+        window.open(BOT_PAY_LINK, '_blank');
       }
     }
 
@@ -1364,7 +1230,6 @@ function instantPayStars() {
       document.getElementById('sheet-panel').classList.add('translate-y-full');
     }
 
-    // Инициализация Telegram WebApp SDK, прав доступа и предзагрузка счёта Stars
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
@@ -1374,7 +1239,6 @@ function instantPayStars() {
     }
 
     initUserAndPermissions();
-    preloadStarsInvoice();
     setTimeout(initUserAndPermissions, 300);
 
     loadMatchesFromFeed();
