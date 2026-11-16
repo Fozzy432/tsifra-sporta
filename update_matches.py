@@ -6,8 +6,12 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 from aiogram import Bot, Dispatcher, F, types
+from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     LabeledPrice,
     PreCheckoutQuery,
@@ -22,6 +26,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "9111021275:AAFfcSkNLe1dkaBEqFG5hOGBWCGdL1eta
 ODDS_API_KEY = os.getenv("ODDS_API_KEY", "dfe0a0a5fcfcef27126858faf2b91ec4")
 MINI_APP_URL = "https://fozzy432.github.io/tsifra-sporta/"
 
+# Настройки обязательной подписки на канал (Бот ДОЛЖЕН быть админом этого канала!)
+CHANNEL_USERNAME = "@DigitSportLive"             # <-- Укажите @username вашего канала (или числовой ID -100...)
+CHANNEL_URL = "https://t.me/DigitSportLive"      # <-- Укажите ссылку на ваш канал
+
 ADMIN_ID = 6851997342          # Ваш Telegram ID владельца
 STARS_PRICE = 499              # Цена подписки PRO в Telegram Stars
 SUBSCRIPTION_DAYS = 30         # Срок действия подписки (дней)
@@ -29,7 +37,6 @@ SUBSCRIPTION_DAYS = 30         # Срок действия подписки (д�
 MATCHES_FILE = "matches.json"
 USERS_FILE = "users.json"
 
-# Топовые турниры: все матчи Лиги наций УЕФА, все матчи КХЛ + главные топ-лиги
 SPORTS_CONFIG = [
     {"key": "soccer_uefa_nations_league", "name": "Лига наций УЕФА", "sport": "football", "featured": True},
     {"key": "icehockey_russia_khl", "name": "КХЛ • Регулярный чемпионат", "sport": "hockey", "featured": True},
@@ -40,6 +47,63 @@ SPORTS_CONFIG = [
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+
+# ==============================================================================
+# БЛОК 0: ПРОВЕРКА ОБЯЗАТЕЛЬНОЙ ПОДПИСКИ НА КАНАЛ
+# ==============================================================================
+async def is_user_subscribed(user_id: int) -> bool:
+    """Проверяет, состоит ли пользователь в официальном канале."""
+    if user_id == ADMIN_ID:
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
+        return member.status in {
+            ChatMemberStatus.MEMBER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.CREATOR,
+        }
+    except Exception as e:
+        logging.error(f"Ошибка проверки подписки на канал {CHANNEL_USERNAME}: {e}")
+        return False
+
+
+def get_subscribe_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=CHANNEL_URL)],
+            [InlineKeyboardButton(text="✅ Я подписался (Проверить)", callback_data="check_subscription")],
+        ]
+    )
+
+
+def get_main_menu_keyboard(is_admin: bool) -> ReplyKeyboardMarkup:
+    keyboard_rows = [
+        [KeyboardButton(text="📊 Открыть Цифру Спорта", web_app=WebAppInfo(url=MINI_APP_URL))],
+        [KeyboardButton(text=f"⭐ Купить PRO-подписку ({STARS_PRICE} Stars)")],
+    ]
+    if is_admin:
+        keyboard_rows.append([KeyboardButton(text="🔄 Обновить Live и линию (Админ)")])
+    return ReplyKeyboardMarkup(keyboard=keyboard_rows, resize_keyboard=True)
+
+
+async def send_welcome_menu(chat_id: int, user_id: int):
+    is_admin = user_id == ADMIN_ID
+    kb = get_main_menu_keyboard(is_admin)
+    admin_note = "\n\n👑 *Вы авторизованы как владелец — PRO-доступ активен бесплатно.*" if is_admin else ""
+    await bot.send_message(
+        chat_id=chat_id,
+        text=(
+            "👋 Добро пожаловать в **Цифру Спорта**!\n\n"
+            "• Все матчи **Лиги наций УЕФА** и **КХЛ** за сегодня\n"
+            "• **Live-счёт** и пересчёт шансов на победу в реальном времени\n"
+            "• Автоудаление завершившихся игр\n"
+            f"• **PRO ({STARS_PRICE} ⭐/мес):** ИИ-проверка экспрессов и рекомендации по замене"
+            f"{admin_note}"
+        ),
+        parse_mode="Markdown",
+        reply_markup=kb,
+    )
 
 
 # ==============================================================================
@@ -76,7 +140,6 @@ def activate_pro_subscription(user_id: int, days: int = SUBSCRIPTION_DAYS) -> st
 # БЛОК 2: LIVE-СЧЁТ, ДИНАМИЧЕСКИЙ ПРОГНОЗ И АВТОУДАЛЕНИЕ ЗАВЕРШЁННЫХ МАТЧЕЙ
 # ==============================================================================
 def calc_fair_probabilities(p1_odd: float, x_odd: float, p2_odd: float) -> dict:
-    """Убирает маржу букмекера и возвращает чистый процент победы (сумма = 100%)."""
     inv_p1 = 1 / p1_odd
     inv_x = 1 / x_odd if x_odd > 0 else 0
     inv_p2 = 1 / p2_odd
@@ -89,7 +152,6 @@ def calc_fair_probabilities(p1_odd: float, x_odd: float, p2_odd: float) -> dict:
 
 
 def adjust_live_probabilities(base_prob: dict, home_score: int, away_score: int, sport: str) -> dict:
-    """Динамически меняет процент победы в реальном времени при изменении счёта."""
     diff = home_score - away_score
     if diff == 0:
         return base_prob.copy()
@@ -107,7 +169,6 @@ def adjust_live_probabilities(base_prob: dict, home_score: int, away_score: int,
 
 
 def build_explanation(team1: str, team2: str, prob: dict, best_odds: dict, is_live: bool = False, score_str: str = "") -> tuple[str, list]:
-    """Генерирует понятное объяснение, почему у команды больше шансов на победу."""
     if prob["p1"] >= prob["p2"]:
         fav_team, dog_team = team1, team2
         fav_prob, dog_prob = prob["p1"], prob["p2"]
@@ -150,7 +211,6 @@ def build_explanation(team1: str, team2: str, prob: dict, best_odds: dict, is_li
 
 
 def fetch_live_scores_map(sport_key: str) -> dict:
-    """Получает текущий Live-счёт и статус завершения для лиги."""
     url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/"
     params = {"apiKey": ODDS_API_KEY, "daysFrom": 1}
     scores_map = {}
@@ -165,11 +225,6 @@ def fetch_live_scores_map(sport_key: str) -> dict:
 
 
 def sync_all_matches_sync() -> tuple[int, int]:
-    """
-    1. Загружает все актуальные матчи Лиги наций, КХЛ и топ-лиг.
-    2. Обновляет Live-счёт и пересчитывает прогнозы в реальном времени.
-    3. Сразу удаляет завершившиеся матчи (completed == True или истекло время игры).
-    """
     if not ODDS_API_KEY or "ВСТАВЬТЕ" in ODDS_API_KEY:
         logging.warning("ODDS_API_KEY не задан — пропуск запроса к API.")
         return 0, 0
@@ -203,19 +258,17 @@ def sync_all_matches_sync() -> tuple[int, int]:
             team2 = ev["away_team"]
             start_dt = datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00"))
 
-            # Проверка: показываем матчи на ближайшие 36 часов, а завершившиеся сразу удаляем
             if start_dt > now_utc + timedelta(hours=36):
                 continue
 
             score_info = scores_map.get(ev_id, {})
             if score_info.get("completed") is True:
-                continue  # Матч закончился — сразу убираем из приложения!
+                continue
 
             duration_minutes = 115 if cfg["sport"] == "football" else 150
             if now_utc >= start_dt + timedelta(minutes=duration_minutes):
-                continue  # Время игры вышло — убираем!
+                continue
 
-            # Определяем Live-статус и текущий счёт
             is_live = now_utc >= start_dt
             home_score = 0
             away_score = 0
@@ -235,7 +288,6 @@ def sync_all_matches_sync() -> tuple[int, int]:
                 else:
                     live_clock = f"1-й пер. {elapsed}'" if elapsed <= 20 else ("2-й пер." if elapsed <= 55 else "3-й пер.")
 
-            # Собираем коэффициенты букмекеров
             bookmakers_list = []
             best_p1 = {"val": 0.0, "bk": "Pinnacle"}
             best_x = {"val": 0.0, "bk": "Pinnacle"}
@@ -318,7 +370,6 @@ def sync_all_matches_sync() -> tuple[int, int]:
                 "reasons": reasons,
             })
 
-    # Сортируем: сначала матчи, которые идут прямо сейчас (LIVE), затем по времени начала
     collected.sort(key=lambda item: (0 if item["status"] == "live" else 1, item["startTs"]))
 
     if collected:
@@ -334,11 +385,6 @@ def sync_all_matches_sync() -> tuple[int, int]:
 
 
 async def smart_realtime_scheduler():
-    """
-    Умный планировщик:
-    - Если сейчас идут Live-матчи -> обновляет счёт и прогнозы каждые 90 секунд (1.5 минуты).
-    - Если все матчи ещё не начались -> обновляет линию каждые 15 минут (900 сек).
-    """
     while True:
         _, live_count = await asyncio.to_thread(sync_all_matches_sync)
         sleep_seconds = 90 if live_count > 0 else 900
@@ -350,27 +396,29 @@ async def smart_realtime_scheduler():
 # ==============================================================================
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
-    is_admin = message.from_user.id == ADMIN_ID
-    keyboard_rows = [
-        [KeyboardButton(text="📊 Открыть Цифру Спорта", web_app=WebAppInfo(url=MINI_APP_URL))],
-        [KeyboardButton(text=f"⭐ Купить PRO-подписку ({STARS_PRICE} Stars)")],
-    ]
-    if is_admin:
-        keyboard_rows.append([KeyboardButton(text="🔄 Обновить Live и линию (Админ)")])
+    if not await is_user_subscribed(message.from_user.id):
+        await message.answer(
+            "🔒 **Доступ к «Цифре Спорта» открыт только подписчикам нашего канала!**\n\n"
+            f"Подпишитесь на {CHANNEL_USERNAME}, а затем нажмите кнопку **«✅ Я подписался (Проверить)»** ниже.",
+            parse_mode="Markdown",
+            reply_markup=get_subscribe_keyboard(),
+        )
+        return
 
-    kb = ReplyKeyboardMarkup(keyboard=keyboard_rows, resize_keyboard=True)
+    await send_welcome_menu(message.chat.id, message.from_user.id)
 
-    admin_note = "\n\n👑 *Вы авторизованы как владелец — PRO-доступ активен бесплатно.*" if is_admin else ""
-    await message.answer(
-        "👋 Добро пожаловать в **Цифру Спорта**!\n\n"
-        "• Все матчи **Лиги наций УЕФА** и **КХЛ** за сегодня\n"
-        "• **Live-счёт** и пересчёт шансов на победу в реальном времени\n"
-        "• Автоудаление завершившихся игр\n"
-        f"• **PRO ({STARS_PRICE} ⭐/мес):** ИИ-проверка экспрессов и рекомендации по замене"
-        f"{admin_note}",
-        parse_mode="Markdown",
-        reply_markup=kb,
-    )
+
+@dp.callback_query(F.data == "check_subscription")
+async def callback_check_subscription(callback: CallbackQuery):
+    if await is_user_subscribed(callback.from_user.id):
+        await callback.answer("✅ Подписка подтверждена!", show_alert=False)
+        await callback.message.delete()
+        await send_welcome_menu(callback.message.chat.id, callback.from_user.id)
+    else:
+        await callback.answer(
+            f"❌ Вы ещё не подписались на канал {CHANNEL_USERNAME}. Подпишитесь и нажмите снова!",
+            show_alert=True,
+        )
 
 
 async def send_stars_invoice(chat_id: int):
@@ -388,6 +436,13 @@ async def send_stars_invoice(chat_id: int):
 @dp.message(Command("pro"))
 @dp.message(F.text == f"⭐ Купить PRO-подписку ({STARS_PRICE} Stars)")
 async def cmd_buy_pro(message: types.Message):
+    if not await is_user_subscribed(message.from_user.id):
+        await message.answer(
+            f"🔒 Сначала подпишитесь на наш официальный канал {CHANNEL_USERNAME}:",
+            reply_markup=get_subscribe_keyboard(),
+        )
+        return
+
     if message.from_user.id == ADMIN_ID:
         await message.answer("👑 Вы владелец проекта — для вас подписка PRO уже активна бесплатно!")
         return
@@ -409,6 +464,13 @@ async def cmd_admin_sync(message: types.Message):
 
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message):
+    if not await is_user_subscribed(message.from_user.id):
+        await message.answer(
+            f"🔒 Для использования приложения подпишитесь на канал {CHANNEL_USERNAME}:",
+            reply_markup=get_subscribe_keyboard(),
+        )
+        return
+
     try:
         data = json.loads(message.web_app_data.data)
     except Exception:
@@ -434,7 +496,7 @@ async def process_successful_payment(message: types.Message):
 
 
 async def main():
-    logging.info("Запуск «Цифра Спорта» (бот + Live-трекер матчей)...")
+    logging.info("Запуск «Цифра Спорта» (бот + обязательная подписка + Live-трекер)...")
     asyncio.create_task(smart_realtime_scheduler())
     await dp.start_polling(bot)
 
